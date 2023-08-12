@@ -1,0 +1,412 @@
+Step Notes:
+
+- step0_repl
+    - prompt, input, READ, EVAL, PRINT, output
+    - readline module
+        - display prompt, read line of input
+    - Details:
+        - get your language compiler/interpreter running
+        - create step0_repl.EXT
+            - loop that reads input, calls rep, writes output, exits
+              on EOF/Ctrl-D
+            - rep calls PRINT(EVAL(READ(str)))
+            - READ, EVAL, PRINT just return input parameter
+        - modify toplevel Makefile
+            - add language (directory name) to IMPLS
+            - add <lang>_STEP_TO_PROG entry
+            - add <lang>_RUNSTEP entry
+        - for a compiled language, add <lang>/Makefile
+            - targets: all, step*, stats, stats-lisp, 
+
+- use native eval in EVAL if available
+
+- libedit/GNU readline:
+    - use existing lib, wrap shell call or implement
+    - load history file on first call
+    - add non-blank lines to history
+    - append to history file
+
+- step1_read_print
+    - types module:
+        - add boxed types if no language equivalent:
+            - nil, true, false, symbol, integer, string, list
+        - error types if necessary
+    - reader module:
+        - stateful reader object
+            - alternative: mutate token list
+        - tokenize (if regex available)
+            - standard regex pattern: "/[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"|;.*|[^\s\[\]{}('\"`,;)]*)/"
+        - read_str
+            - read_form(new Reader(tokenize(str)))
+        - read_form
+            - detect errors
+            - call read_list or read_atom
+        - read_list
+            - read_form until ')'
+            - return array (boxed)
+        - read_atom (not atom type)
+            - return scalar boxed type:
+                - nil, true, false, symbol, integer, string
+            - skip unquoting
+    - printer module:
+        - _pr_str:
+            - stringify boxed types to their Mal representations
+            - list/array is recursive
+            - skip quoting
+    - repl loop
+        - catch errors, print them and continue
+        - impls without exception handling will need to have a global
+          variable with checks for it at the beginning of critical
+          code sections
+    - Details:
+        - copy step0_repl.EXT to step1_read_print.EXT
+            - modify Makefile if compiled
+            - call reader.read_str from READ
+            - pass through type returned from read_str through
+              READ/EVAL/PRINT
+        - create reader.EXT
+            - if regex support (much easier) then tokenize with this:
+                /[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)/g
+            - add read_str:
+                - call tokenize
+                - handle blank line (exceptions, return code, global
+                  depending on lang features)
+            - read_str -> read_form -> {read_list, read_atom}
+                - mutable reader thing
+        - create printer.EXT
+            - _pr_str function which basically reverses read_str and
+              returns a string representation
+        - run `make test^EXT^step1`. Much of the basics should pass up
+          to vectors
+        - implement read_hash_map (can refactor read_list)
+        - import read_vector 
+            - probably want to define types for List and Vector in
+              types.EXT that extend or wrap native arrays
+        - run `make test^EXT^step1`. All mandatory should pass
+
+- comments
+
+- vectors
+    - Basically: two array types that retain their boxed types, can be
+      challenging depending on the language (e.g. JS, PHP: no clean
+      way to derive new array types).
+    - types module:
+        - add vector boxed type
+            - derived from array if possible
+        - pr_str:
+            - vector is recursive
+        - sequential?
+    - reader module:
+        - read_vector:
+            - re-use read_list but with different constructor, delims
+
+- hash-maps
+    - reader module:
+        - re-use read_list function and apply that using hash-map
+          constructor
+    - types module:
+        - pr_str addition
+        - hash-map, map?, assoc, dissoc, get, contains?, keys,
+          vals (probably assoc! and dissoc! for internal)
+    - eval_map: eval the keys and values of hash_maps
+    - EVAL:
+        - if hash_map, call eval_map on it
+
+- step2_eval
+    - types module:
+        - symbol?, list? (if no simple idiomatic impl type check)
+        - first, rest, nth on list
+    - eval_ast:
+        - if symbol, return value of looking up in env
+        - if list, eval each item, return new list
+        - otherwise, just return unchanged ast
+    - EVAL/apply:
+        - if not a list, call eval_ast
+        - otherwise, apply first item to eval_ast of (rest ast)
+    - repl_env as simple one level hash map (assoc. array)
+        - store function as hash_map value
+    - Details:
+        - copy step1_read_print.EXT to step2_eval.EXT
+        - create repl_env hash_map) with +, -, *, /
+            - store anon func as values if possible
+        - types.EXT
+            - implement symbol? (symbol_Q) and list? (list_Q)
+        - add env param to EVAL and add to rep EVAL call
+        - EVAL
+            - if not list call eval_ast
+            - otherwise eval_ast, and call first arg with rest
+        - eval_ast
+            - if symbol?, lookup in env
+            - if List, EVAL each and return eval's list
+            - otherwise, return original
+        - optional: handle vector and hash-map in eval_ast
+
+- vectors
+    - eval each item, return new vector
+
+- hash-maps
+    - eval each value, return new hash_map
+
+- step3_env
+    - types module:
+        - may need function type if HashMap is strongly typed (e.g. Java)
+    - env type:
+        - find, set, get (no binds/exprs in constructor yet)
+    - EVAL/apply:
+        - def! - mutate current environment
+        - let* - create new environment with bindings
+    - Details:
+        - cp step2_eval.EXT to step3_env.EXT
+        - add env.EXT if lang support file dep cycles, otherwise, add
+          to types.EXT
+            - Env type
+            - find, get, set methods/functions
+        - use Env type instead of map/assoc. array
+        - eval_ast: use method for lookup
+        - EVAL:
+            - switch on first symbol
+                - def!
+                    - set env[a1] to EVAL(a2, env)
+                - let*
+                    - loop through let building up let_env
+                    - EVAL(a2, let_env)
+                - move apply to default
+
+- step4_if_fn_do
+    - types module:
+        - function type if no closures in impl language
+        - _equal_Q function (recursive)
+    - reader module
+        - string unescaping
+    - printer module
+        - print_readably option for pr_str
+        - add function printing to pr_str
+        - string escaping in pr_str
+    - core module (export via core_ns):
+        - export equal_Q from types as =
+        - move arith operations here
+        - add arith comparison functions
+        - pr_str, str, prn, println
+        - list, list?, count, empty?
+    - env module:
+        - add binds/exprs handling to Env constructor with variable arity
+    - EVAL:
+        - do:
+        - if:
+        - fn*:
+            - simple if language supports closures
+            - otherwise needs a way of representing functions that can
+              have associated metadata
+    - define "not" using REP/RE
+    - Details:
+        - cp step3_env.EXT to step4_env.EXT
+            - modify Makefile if compiled
+        - env.EXT
+            - add binds and exprs args. Create new environments with
+              exprs bound to binds. If & symbol, bind rest of exprs to
+              next bind symbol
+        - EVAL:
+            - do:
+                - eval_ast [1:], then return last eval'd element
+            - if
+                - EVAL(a1)
+                    - if true EVAL(a2)
+                    - else EVAL(a3), unless no a3 then return nil
+            - fn*
+                - if available use function closures to return a new
+                  native function that calls EVAL(a2, Env(env, a1, fargs))
+                - otherwise, store exp, params and env in a structure
+        - core.EXT
+            - create ns object to hold core namespace
+            - move numeric operators here
+            - add comparison operators
+            - add list, list?, empty?, count
+        - run make test^EXT^step4
+        - implement equal?/equal_Q in types.EXT and refer in core.ns
+        - implement not as rep("(def! not (fn* (a) (if a false true)))")
+        - run make test^EXT^step4: should pass everything except
+          string routines
+        - implement: pr-str, str, prn, println in core.EXT and
+          refer in core.ns
+            - should leverage pr-str from printer.EXT
+            - add reader/printer string quote/unquote
+
+- step5_tco
+    - types module:
+        - mal function type:
+            - stores: eval, exp, env, params
+            - eval is EVAL in native mal case (needed for map function
+              later), otherwise reference to platform function
+            - if metadata support, then store exp, env, params as
+              metadata
+    - printer
+        - add printing of mal function type
+    - EVAL:
+        - while loop around whole thing
+        - cases where we directly return result of EVAL, instead set
+          ast and env to what would be put in the EVAL, then loop.
+            - do, if, "apply"
+            - "apply"
+                - if mal function type
+                    - set env to new Env based on properties on the function
+                - if native function, same as before
+    - Details:
+        - types.EXT
+            - create Mal function type to store eval, exp, env, params
+        - cp step4_if_fn_do.EXT to step5_tco.EXT
+            - wrap EVAL in infinite while loop
+            - in let*, do, and if:
+                - set ast and env and loop (no return)
+            - in fn* create Mal function type
+        - if compiled, update Makefile
+        - in apply, test if Mal function type:
+            - if so, generate new env from stored env, args and callee
+              params
+            - set ast to stored ast
+
+
+- step6_file
+    - core module:
+        - read-string, slurp functions
+    - define eval and load-file functions
+    - set *ARGV*
+    - if files on command line, use load-file to run first argument
+      using rest as arguments
+    - Details:
+        - cp step5_tco.EXT to step6_file.EXT
+        - if compiled update Makefile
+        - add eval to repl_env
+            - if no (or limited closures) may have to add an "eval"
+              case to EVAL and use function which gets root of
+              environment to env.EXT (see rust).
+        - add empty *ARGV* list to repl_env
+        - in core.ns:
+            - wrap printer.read-str as read-string
+            - implement slurp
+        - implement load-file using rep
+        - test:
+            (load-file "../tests/inc.mal")
+            (inc3 10)
+        - implement command line execution
+        - test:
+            ./step6_file ../tests/incA.mal
+            =>9
+        - implement comments in reader.EXT (ignore in tokenize)
+
+- step7_quote
+    - add is_pair and quasiquote functions
+        - rewrite ast using cons/concat functions
+        - if vectors, use sequential? instead of list? in is_pair
+    - EVAL:
+        - add 'quote', 'quasiquote' cases
+    - core module:
+        - add cons and concat functions
+    - reader module:
+        - add reader macros to read_form for quote, unquote,
+          splice-unquote and quasiquote
+    - Details:
+        - cp step6_file.EXT to step6_quote.EXT
+        - if compiled update Makefile
+        - implement reader macros (', `, ~, ~@) in reader
+        - retest make test^go^step1
+        - add is_pair and quasiquote
+        - add quote and quasiquote cases to EVAL
+        - implement cons and concat in core.EXT
+        - retest test^go^step7
+
+- step8_macros
+    - types
+        - capability to store ismacro property in function
+    - core module:
+        - add first, rest, nth functions
+    - add is_macro_call and macroexpand
+        - recursively macroexpand lists
+        - if applying a macro function, run it on the ast first before
+          continuing
+    - call macroexpand apply in EVAL before apply
+    - EVAL:
+        - add 'defmacro!' and 'macroexpand'
+        - set ismacro property on function
+    - Details:
+        - cp step7_quote.EXT to step8_macros.EXT
+        - if compiled update Makefile
+        - add isMacro property to Mal Function type
+            - may need to go back and adjust step5-7
+        - implement is_macro_call and macroexpand
+        - call macroexpand on ast before apply in EVAL
+        - add defmacro! and macroexpand to EVAL switch
+        - make test^go^step8 should pass some basic macros
+        - add nth, first, and rest to core.ns
+        - make test^go^step8 should now pass
+
+- step9_try
+    - core module:
+        - throw function
+        - apply, map functions: should not directly call EVAL, which
+          requires the function object to be runnable
+        - readline
+        - nil?, true?, false? 
+    - EVAL:
+        - try*/catch*: for normal exceptions, extracts string
+          otherwise extracts full value
+    - set and print *host-language*
+    - define cond and or macros using REP/RE
+    - Details:
+        - cp step8_macros.EXT to stepA_try.EXT
+        - if compiled update Makefile
+        - core.ns implement nil?, true?, false?, symbol?, sequential?,
+          vector, vector?
+        - add mal error type which wraps normal mal type
+            - in core.ns add throw which wraps type in mal error type
+              and throws/raises/sets exception
+        - add try*/catch* support to EVAL
+            - if mal error type, bind to catch* bind symbol
+            - otherwise, bind string of error to catch* bind symbol
+        - implement apply, map in core.ns
+        - make test^go^stepA
+        - implement readline.EXT
+            - provide option (e.g. commented out) to link with GNU
+              readline (GPL) or libedit (BSD)
+        - add hash-map functions: hash-map, map?, assoc, dissoc, get,
+          contains?, keys, vals
+        - add metadata support to List, Vector, HashMap, and Functions
+            - add reader macro
+            - may need to box HashMap and native functions
+        - add atom type, reader macro and functions: with_meta, meta
+        - get `make test^go^stepA` to fully pass
+        - get `./stepA_try ../mal/step1_read_print` to pass
+            - continue for each mal step until ../mal/stepA_try
+            - Now self-hosting!
+
+
+- Extra definitions needed for self-hosting
+    - core module:
+        - symbol?, sequential? (if not already)
+        - vector, vector?
+
+
+- atoms
+    - reader module:
+        - @a reader macro -> (deref a)
+    - core module:
+        - pr_str case
+        - atom type, atom, atom?, deref, reset!, swap!
+
+- metadata
+    - reader module:
+        - ^ reader macro reads ^meta obj -> (with-meta obj meta)
+    - types module:
+        - support meta property on collections: lists, vectors,
+          hash-maps, functions, atoms
+            - clone/copy of collections
+    - core module:
+        - add with-meta, meta functions
+
+- Other misc:
+    - conj function
+
+- stepA_mal
+    - convert returned data to mal data
+        - recursive, similar to pr_str
+    - Details:
+
