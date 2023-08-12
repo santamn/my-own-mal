@@ -1,5 +1,5 @@
 [package]
-name = "rusty_mal"
+name = "rust"
 version = "0.1.0"
 edition = "2021"
 
