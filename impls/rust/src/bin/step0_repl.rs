@@ -1,27 +1,37 @@
-use std::io::Write;
+use rustyline::error::ReadlineError;
+use rustyline::DefaultEditor;
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     loop {
-        print!("user> ");
-        std::io::stdout().flush().unwrap();
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
-        println!("{}", rep(input.trim().to_string()));
+        let mut editor = DefaultEditor::new()?;
+        let readline = editor.readline("user> ");
+        match readline {
+            Ok(line) => println!("{}", rep(line)),
+            Err(ReadlineError::Interrupted) => continue,
+            Err(ReadlineError::Eof) => break Ok(()),
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break Err(err.into());
+            }
+        }
     }
 }
 
-fn read(input: String) -> String {
+#[allow(non_snake_case)]
+fn READ(input: String) -> String {
     input
 }
 
-fn eval(input: String) -> String {
+#[allow(non_snake_case)]
+fn EVAL(input: String) -> String {
     input
 }
 
-fn print(input: String) -> String {
+#[allow(non_snake_case)]
+fn PRINT(input: String) -> String {
     input
 }
 
 fn rep(input: String) -> String {
-    print(eval(read(input)))
+    PRINT(EVAL(READ(input)))
 }
