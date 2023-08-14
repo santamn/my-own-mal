@@ -19,4 +19,11 @@ $ make stepX
 $ impls/rust/target/release/stepA_mal
 ```
 
+### Test
+
+トップレベルで
+```
+$ make test^rust
+```
+
 ## Clojure
