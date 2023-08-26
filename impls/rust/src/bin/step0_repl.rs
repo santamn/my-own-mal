@@ -1,7 +1,8 @@
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
+use std::error::Error;
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), Box<dyn Error>> {
     loop {
         let mut editor = DefaultEditor::new()?;
         let readline = editor.readline("user> ");

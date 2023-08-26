@@ -1,3 +1,4 @@
+use rust::printer;
 use rust::reader;
 use rust::types::{MalResult, MalVal};
 use rustyline::error::ReadlineError;
@@ -35,7 +36,7 @@ fn EVAL(input: MalVal) -> MalVal {
 // TODO: pr_str関数を呼び出す
 #[allow(non_snake_case)]
 fn PRINT(input: MalVal) -> String {
-    printer::pr_str(input)
+    printer::pr_str(&input)
 }
 
 fn rep(input: String) -> Result<String, Box<dyn Error + Send + Sync + 'static>> {

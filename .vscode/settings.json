@@ -1,4 +1,4 @@
 {
   "rust-analyzer.linkedProjects": ["impls/rust/Cargo.toml"],
-  "cSpell.words": ["Peekable"]
+  "cSpell.words": ["Peekable", "Uncloed"]
 }
