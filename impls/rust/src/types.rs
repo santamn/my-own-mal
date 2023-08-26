@@ -1,4 +1,6 @@
-use std::collections::{HashMap, HashSet, LinkedList};
+use fnv::{FnvHashMap, FnvHashSet};
+use std::collections::LinkedList;
+use std::fmt::Display;
 use std::hash::Hash;
 use std::rc::Rc;
 
@@ -11,8 +13,8 @@ pub enum MalVal {
     Symbol(String),
     List(Rc<LinkedList<MalVal>>, Rc<MalVal>),
     Vector(Rc<Vec<MalVal>>, Rc<MalVal>),
-    HashMap(Rc<HashMap<MalVal, MalVal>>, Rc<MalVal>),
-    HashSet(Rc<HashSet<MalVal>>, Rc<MalVal>),
+    HashMap(Rc<FnvHashMap<MalVal, MalVal>>, Rc<MalVal>),
+    HashSet(Rc<FnvHashSet<MalVal>>, Rc<MalVal>),
 }
 
 impl PartialEq for MalVal {
@@ -36,14 +38,42 @@ impl Eq for MalVal {}
 
 impl Hash for MalVal {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        todo!()
+        match self {
+            MalVal::Nil => 0.hash(state),
+            MalVal::Bool(b) => b.hash(state),
+            MalVal::Number(n) => n.hash(state),
+            MalVal::String(s) => s.hash(state),
+            MalVal::Symbol(s) => s.hash(state),
+            MalVal::List(l, _) => l.hash(state),
+            MalVal::Vector(v, _) => v.hash(state),
+            MalVal::HashMap(m, _) => {
+                state.write_usize(m.len());
+                for (k, v) in m.iter() {
+                    k.hash(state);
+                    v.hash(state);
+                }
+            }
+            MalVal::HashSet(s, _) => {
+                state.write_usize(s.len());
+                for v in s.iter() {
+                    v.hash(state);
+                }
+            }
+        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum MalError {
-    ErrString(String),
     Parse(String),
+}
+
+impl Display for MalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MalError::Parse(s) => write!(f, "Parse Error: {}", s),
+        }
+    }
 }
 
 pub type MalResult = Result<MalVal, MalError>;

@@ -1,5 +1,6 @@
 use crate::types::{MalError, MalResult, MalVal};
-use std::collections::{HashMap, LinkedList};
+use fnv::FnvHashMap;
+use std::collections::LinkedList;
 use std::iter::Peekable;
 use std::rc::Rc;
 
@@ -12,7 +13,7 @@ macro_rules! regex {
 
 // tokenize関数を呼び出しReaderオブジェクトを作成する
 // その後、Readerオブジェクトを引数にしてread_str関数を呼び出す
-fn read_str(input: String) -> MalResult {
+pub fn read_str(input: String) -> MalResult {
     read_form(&mut tokenize(input).iter().peekable())
 }
 
@@ -99,12 +100,13 @@ where
     Err(MalError::Parse("unbalanced brackets".to_string()))
 }
 
+// TODO: 要素が偶数個の場合はエラーを返す
 fn read_hashmap<I, S>(reader: &mut Peekable<I>) -> MalResult
 where
     I: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let mut m = HashMap::new();
+    let mut m = FnvHashMap::default();
     reader.next(); // "{"を読み飛ばす
     while let Some(token) = reader.peek() {
         if token.as_ref() == "}" {
@@ -112,8 +114,13 @@ where
             return Ok(MalVal::HashMap(Rc::new(m), Rc::new(MalVal::Nil)));
         }
         let key = read_form(reader)?;
-        let value = read_form(reader)?;
-        m.insert(key, value);
+        if let Ok(value) = read_form(reader) {
+            m.insert(key, value);
+        } else {
+            return Err(MalError::Parse(
+                "hashmap with odd number of forms".to_string(),
+            ));
+        }
     }
 
     Err(MalError::Parse("unbalanced braces".to_string()))
