@@ -1,5 +1,5 @@
 use crate::types::{MalError, MalResult, MalVal};
-use fnv::FnvHashMap;
+use fnv::{FnvHashMap, FnvHashSet};
 use std::collections::LinkedList;
 use std::iter::Peekable;
 use std::rc::Rc;
@@ -60,6 +60,7 @@ where
         "(" => read_list(reader),
         "[" => read_vec(reader),
         "{" => read_hashmap(reader),
+        "#{" => read_hashset(reader),
         _ => read_atom(reader),
     }
 }
@@ -100,7 +101,6 @@ where
     Err(MalError::Parse("unbalanced brackets".to_string()))
 }
 
-// TODO: 要素が偶数個の場合はエラーを返す
 fn read_hashmap<I, S>(reader: &mut Peekable<I>) -> MalResult
 where
     I: Iterator<Item = S>,
@@ -121,6 +121,24 @@ where
                 "hashmap with odd number of forms".to_string(),
             ));
         }
+    }
+
+    Err(MalError::Parse("unbalanced braces".to_string()))
+}
+
+fn read_hashset<I, S>(reader: &mut Peekable<I>) -> MalResult
+where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut s = FnvHashSet::default();
+    reader.next(); // "#{"を読み飛ばす
+    while let Some(token) = reader.peek() {
+        if token.as_ref() == "}" {
+            reader.next(); // "}"を読み飛ばす
+            return Ok(MalVal::HashSet(Rc::new(s), Rc::new(MalVal::Nil)));
+        }
+        s.insert(read_form(reader)?);
     }
 
     Err(MalError::Parse("unbalanced braces".to_string()))
