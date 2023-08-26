@@ -1,4 +1,4 @@
-use crate::types::{MalError, MalResult, MalVal};
+use crate::types::{MalError, MalResult, MalVal, Paren};
 use fnv::{FnvHashMap, FnvHashSet};
 use std::collections::LinkedList;
 use std::iter::Peekable;
@@ -44,19 +44,12 @@ fn tokenize(input: String) -> Vec<String> {
 // ここまでLexer
 // 以下がParser
 
-// Readerオブジェクトをpeek
-//  - '('の場合: read_list関数を呼び出す
-//  - otherwise: read_atom関数を呼び出す
 fn read_form<I, S>(reader: &mut Peekable<I>) -> MalResult
 where
     I: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    match reader
-        .peek()
-        .ok_or(MalError::Parse("unexpected EOF".to_string()))?
-        .as_ref()
-    {
+    match reader.peek().ok_or(MalError::NoInput)?.as_ref() {
         "(" => read_list(reader),
         "[" => read_vec(reader),
         "{" => read_hashmap(reader),
@@ -80,7 +73,7 @@ where
         l.push_back(read_form(reader)?);
     }
 
-    Err(MalError::Parse("unbalanced parentheses".to_string()))
+    Err(MalError::Unbalanced(Paren::Round))
 }
 
 fn read_vec<I, S>(reader: &mut Peekable<I>) -> MalResult
@@ -98,7 +91,7 @@ where
         v.push(read_form(reader)?);
     }
 
-    Err(MalError::Parse("unbalanced brackets".to_string()))
+    Err(MalError::Unbalanced(Paren::Square))
 }
 
 fn read_hashmap<I, S>(reader: &mut Peekable<I>) -> MalResult
@@ -113,17 +106,16 @@ where
             reader.next(); // "}"を読み飛ばす
             return Ok(MalVal::HashMap(Rc::new(m), Rc::new(MalVal::Nil)));
         }
+
         let key = read_form(reader)?;
         if let Ok(value) = read_form(reader) {
             m.insert(key, value);
         } else {
-            return Err(MalError::Parse(
-                "hashmap with odd number of forms".to_string(),
-            ));
+            return Err(MalError::OddMap(m.len() * 2 + 1));
         }
     }
 
-    Err(MalError::Parse("unbalanced braces".to_string()))
+    Err(MalError::Unbalanced(Paren::Curly))
 }
 
 fn read_hashset<I, S>(reader: &mut Peekable<I>) -> MalResult
@@ -141,20 +133,15 @@ where
         s.insert(read_form(reader)?);
     }
 
-    Err(MalError::Parse("unbalanced braces".to_string()))
+    Err(MalError::Unbalanced(Paren::Curly))
 }
 
-// トークンを読み込んで、適切なMalTypeを返す
 fn read_atom<I, S>(reader: &mut I) -> MalResult
 where
     I: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    match reader
-        .next()
-        .ok_or(MalError::Parse("unexpected EOF".to_string()))?
-        .as_ref()
-    {
+    match reader.next().unwrap().as_ref() {
         "nil" => Ok(MalVal::Nil),
         token => {
             if let Ok(b) = token.parse::<bool>() {
@@ -165,8 +152,10 @@ where
                 if token.ends_with("\"") {
                     return Ok(MalVal::String(token[1..token.len() - 1].to_string()));
                 } else {
-                    Err(MalError::Parse("closing \" is missing".to_string()))
+                    Err(MalError::UncloedQuote)
                 }
+            } else if token.starts_with(":") {
+                Ok(MalVal::Keyword(token[1..].to_string()))
             } else {
                 Ok(MalVal::Symbol(token.to_string()))
             }

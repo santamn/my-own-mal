@@ -10,6 +10,7 @@ pub enum MalVal {
     Bool(bool),
     Number(i64),
     String(String),
+    Keyword(String),
     Symbol(String),
     List(Rc<LinkedList<MalVal>>, Rc<MalVal>),
     Vector(Rc<Vec<MalVal>>, Rc<MalVal>),
@@ -24,6 +25,7 @@ impl PartialEq for MalVal {
             (MalVal::Bool(a), MalVal::Bool(b)) => a == b,
             (MalVal::Number(a), MalVal::Number(b)) => a == b,
             (MalVal::String(a), MalVal::String(b)) => a == b,
+            (MalVal::Keyword(a), MalVal::Keyword(b)) => a == b,
             (MalVal::Symbol(a), MalVal::Symbol(b)) => a == b,
             (MalVal::List(a, _), MalVal::List(b, _)) => a == b,
             (MalVal::Vector(a, _), MalVal::Vector(b, _)) => a == b,
@@ -43,6 +45,7 @@ impl Hash for MalVal {
             MalVal::Bool(b) => b.hash(state),
             MalVal::Number(n) => n.hash(state),
             MalVal::String(s) => s.hash(state),
+            MalVal::Keyword(s) => s.hash(state),
             MalVal::Symbol(s) => s.hash(state),
             MalVal::List(l, _) => l.hash(state),
             MalVal::Vector(v, _) => v.hash(state),
@@ -63,15 +66,36 @@ impl Hash for MalVal {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Paren {
+    Round,  // ()
+    Square, // []
+    Curly,  // {}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MalError {
-    Parse(String),
+    NoInput,
+    Unbalanced(Paren),
+    UncloedQuote,
+    OddMap(usize),
 }
 
 impl Display for MalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MalError::Parse(s) => write!(f, "Parse Error: {}", s),
+            MalError::NoInput => write!(f, "no input"),
+            MalError::Unbalanced(p) => write!(
+                f,
+                "expected {}, got EOF",
+                match p {
+                    Paren::Round => ")",
+                    Paren::Square => "]",
+                    Paren::Curly => "}",
+                }
+            ),
+            MalError::UncloedQuote => write!(f, "expected \", got EOF"),
+            MalError::OddMap(n) => write!(f, "odd number of map items: {}", n),
         }
     }
 }

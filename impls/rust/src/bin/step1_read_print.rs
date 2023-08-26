@@ -38,17 +38,17 @@ fn PRINT(input: MalVal) -> String {
     printer::pr_str(input)
 }
 
-fn rep(input: String) -> Result<String, Box<dyn Error>> {
+fn rep(input: String) -> Result<String, Box<dyn Error + Send + Sync + 'static>> {
     Ok(PRINT(EVAL(READ(input)?)))
 }
 
 // 追加課題
 
-// 1. 以下の型をサポートする
+// 1. 以下の型をサポートする: 済?
 //  - MalString: '\'で'\'と'"'をエスケープする
 //  - MalBool
 //  - MalNil
 // 2. 括弧の対応が取れていない場合はエラーを返す
 // 3. リーダーマクロのサポート: tests/step1_read_print.malを参照
-// 4. キーワード、ベクター、ハッシュマップのサポート
-// 5. コメントのサポート: ';'から行末までをコメントとして扱う
+// 4. キーワード、ベクター、ハッシュマップのサポート: 済
+// 5. コメントのサポート: ';'から行末までをコメントとして扱う: 済
