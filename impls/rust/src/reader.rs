@@ -1,5 +1,6 @@
 use crate::types::{MalError, MalResult, MalVal};
 use std::collections::{HashMap, LinkedList};
+use std::iter::Peekable;
 use std::rc::Rc;
 
 macro_rules! regex {
@@ -12,7 +13,7 @@ macro_rules! regex {
 // tokenize関数を呼び出しReaderオブジェクトを作成する
 // その後、Readerオブジェクトを引数にしてread_str関数を呼び出す
 fn read_str(input: String) -> MalResult {
-    read_form(tokenize(input).iter())
+    read_form(&mut tokenize(input).iter().peekable())
 }
 
 // 正規表現についてのメモ
@@ -35,6 +36,7 @@ fn tokenize(input: String) -> Vec<String> {
     regex!(r###"[\s,]*(~@|#{|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"###)
         .captures_iter(&input)
         .map(|cap| cap[1].to_string()) // cap[0]はマッチした文字列全体, cap[1]はグループ化した文字列=空白以外の部分
+        .filter(|token| !token.starts_with(";")) // コメント行を除外
         .collect()
 }
 
@@ -44,13 +46,12 @@ fn tokenize(input: String) -> Vec<String> {
 // Readerオブジェクトをpeek
 //  - '('の場合: read_list関数を呼び出す
 //  - otherwise: read_atom関数を呼び出す
-fn read_form<R, T>(reader: R) -> MalResult
+fn read_form<I, S>(reader: &mut Peekable<I>) -> MalResult
 where
-    R: Iterator<Item = T>,
-    T: AsRef<str>,
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
 {
     match reader
-        .peekable()
         .peek()
         .ok_or(MalError::Parse("unexpected EOF".to_string()))?
         .as_ref()
@@ -62,14 +63,14 @@ where
     }
 }
 
-fn read_list<R, T>(mut reader: R) -> MalResult
+fn read_list<I, S>(reader: &mut Peekable<I>) -> MalResult
 where
-    R: Iterator<Item = T>,
-    T: AsRef<str>,
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
 {
     let mut l = LinkedList::new();
     reader.next(); // '('を読み飛ばす
-    while let Some(token) = reader.peekable().peek() {
+    while let Some(token) = reader.peek() {
         if token.as_ref() == ")" {
             reader.next(); // ')'を読み飛ばす
             return Ok(MalVal::List(Rc::new(l), Rc::new(MalVal::Nil)));
@@ -80,14 +81,14 @@ where
     Err(MalError::Parse("unbalanced parentheses".to_string()))
 }
 
-fn read_vec<R, T>(mut reader: R) -> MalResult
+fn read_vec<I, S>(reader: &mut Peekable<I>) -> MalResult
 where
-    R: Iterator<Item = T>,
-    T: AsRef<str>,
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
 {
     let mut v = Vec::new();
     reader.next(); // '['を読み飛ばす
-    while let Some(token) = reader.peekable().peek() {
+    while let Some(token) = reader.peek() {
         if token.as_ref() == "]" {
             reader.next(); // ']'を読み飛ばす
             return Ok(MalVal::Vector(Rc::new(v), Rc::new(MalVal::Nil)));
@@ -98,14 +99,14 @@ where
     Err(MalError::Parse("unbalanced brackets".to_string()))
 }
 
-fn read_hashmap<R, T>(mut reader: R) -> MalResult
+fn read_hashmap<I, S>(reader: &mut Peekable<I>) -> MalResult
 where
-    R: Iterator<Item = T>,
-    T: AsRef<str>,
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
 {
     let mut m = HashMap::new();
     reader.next(); // "{"を読み飛ばす
-    while let Some(token) = reader.peekable().peek() {
+    while let Some(token) = reader.peek() {
         if token.as_ref() == "}" {
             reader.next(); // "}"を読み飛ばす
             return Ok(MalVal::HashMap(Rc::new(m), Rc::new(MalVal::Nil)));
@@ -119,14 +120,18 @@ where
 }
 
 // トークンを読み込んで、適切なMalTypeを返す
-fn read_atom<R, T>(mut reader: R) -> MalResult
+fn read_atom<I, S>(reader: &mut I) -> MalResult
 where
-    R: Iterator<Item = T>,
-    T: AsRef<str>,
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
 {
-    match reader.next().map(|s| s.as_ref()) {
-        Some("nil") => Ok(MalVal::Nil),
-        Some(token) => {
+    match reader
+        .next()
+        .ok_or(MalError::Parse("unexpected EOF".to_string()))?
+        .as_ref()
+    {
+        "nil" => Ok(MalVal::Nil),
+        token => {
             if let Ok(b) = token.parse::<bool>() {
                 return Ok(MalVal::Bool(b));
             } else if let Ok(n) = token.parse::<i64>() {
@@ -138,10 +143,9 @@ where
                     Err(MalError::Parse("closing \" is missing".to_string()))
                 }
             } else {
-                Err(MalError::ErrString("".to_string()))
+                Ok(MalVal::Symbol(token.to_string()))
             }
         }
-        None => unreachable!(),
     }
 }
 
