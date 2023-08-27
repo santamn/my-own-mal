@@ -18,6 +18,64 @@ pub enum MalVal {
     HashSet(Rc<FnvHashSet<MalVal>>, Rc<MalVal>),
 }
 
+impl MalVal {
+    pub fn nil() -> Self {
+        MalVal::Nil
+    }
+
+    pub fn bool(b: bool) -> Self {
+        MalVal::Bool(b)
+    }
+
+    pub fn number(n: i64) -> Self {
+        MalVal::Number(n)
+    }
+
+    pub fn string<T: Into<String>>(str: T) -> Self {
+        MalVal::String(str.into())
+    }
+
+    pub fn keyword<T: Into<String>>(str: T) -> Self {
+        MalVal::Keyword(str.into())
+    }
+
+    pub fn symbol<T: Into<String>>(str: T) -> Self {
+        MalVal::Symbol(str.into())
+    }
+
+    pub fn list(list: LinkedList<MalVal>) -> Self {
+        MalVal::list_with_meta(list, MalVal::Nil)
+    }
+
+    pub fn list_with_meta(list: LinkedList<MalVal>, meta: MalVal) -> Self {
+        MalVal::List(Rc::new(list), Rc::new(meta))
+    }
+
+    pub fn vec(vec: Vec<Self>) -> Self {
+        Self::vec_with_meta(vec, MalVal::Nil)
+    }
+
+    pub fn vec_with_meta(vec: Vec<Self>, meta: Self) -> Self {
+        MalVal::Vector(Rc::new(vec), Rc::new(meta))
+    }
+
+    pub fn hashmap(hashmap: FnvHashMap<MalVal, MalVal>) -> Self {
+        MalVal::hashmap_with_meta(hashmap, MalVal::Nil)
+    }
+
+    pub fn hashmap_with_meta(hashmap: FnvHashMap<MalVal, MalVal>, meta: MalVal) -> Self {
+        MalVal::HashMap(Rc::new(hashmap), Rc::new(meta))
+    }
+
+    pub fn hashset(hashset: FnvHashSet<MalVal>) -> Self {
+        MalVal::hashset_with_meta(hashset, MalVal::Nil)
+    }
+
+    pub fn hashset_with_meta(hashset: FnvHashSet<MalVal>, meta: MalVal) -> Self {
+        MalVal::HashSet(Rc::new(hashset), Rc::new(meta))
+    }
+}
+
 impl PartialEq for MalVal {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -101,3 +159,44 @@ impl Display for MalError {
 }
 
 pub type MalResult = Result<MalVal, MalError>;
+
+#[cfg(test)]
+mod tests {
+    use std::hash::{Hash, Hasher};
+
+    use super::MalVal;
+
+    use rand::seq::SliceRandom;
+    use rand::thread_rng;
+
+    #[test]
+    fn test_hash() {
+        let v = [
+            (MalVal::Nil, MalVal::Bool(false)),
+            (MalVal::Bool(false), MalVal::Number(1)),
+            (MalVal::Number(1), MalVal::string("hello")),
+            (MalVal::string("hello"), MalVal::symbol("+")),
+            (MalVal::symbol("+"), MalVal::keyword("key")),
+            (MalVal::keyword("key"), MalVal::Nil),
+        ];
+
+        for _ in 0..10 {
+            let mut c = v.clone();
+            let mut rng = thread_rng();
+            c.shuffle(&mut rng);
+            let rand_map = MalVal::hashmap(c.into_iter().collect());
+            let expected_map = MalVal::hashmap(v.clone().into_iter().collect());
+            assert_eq!(expected_map, rand_map);
+
+            let mut random_hash = fnv::FnvHasher::default();
+            let mut expected_hash = fnv::FnvHasher::default();
+            rand_map.hash(&mut expected_hash);
+            expected_map.hash(&mut random_hash);
+            assert_eq!(
+                expected_hash.finish(),
+                random_hash.finish(),
+                "hashes are not equal"
+            );
+        }
+    }
+}
