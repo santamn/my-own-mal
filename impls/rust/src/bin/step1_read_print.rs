@@ -1,21 +1,20 @@
 use rust::printer;
 use rust::reader;
+use rust::types::MalError;
 use rust::types::{MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
-use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
     loop {
-        let mut editor = DefaultEditor::new()?;
+        let mut editor = DefaultEditor::new().unwrap();
         let readline = editor.readline("user> ");
         match readline {
-            Ok(line) => println!("{}", rep(line)?),
+            Ok(line) => println!("{:?}", rep(line)),
             Err(ReadlineError::Interrupted) => continue,
-            Err(ReadlineError::Eof) => break Ok(()),
+            Err(ReadlineError::Eof) => break,
             Err(err) => {
                 println!("Error: {:?}", err);
-                break Err(err.into());
             }
         }
     }
@@ -39,7 +38,7 @@ fn PRINT(input: MalVal) -> String {
     printer::pr_str(&input)
 }
 
-fn rep(input: String) -> Result<String, Box<dyn Error + Send + Sync + 'static>> {
+fn rep(input: String) -> Result<String, MalError> {
     Ok(PRINT(EVAL(READ(input)?)))
 }
 
