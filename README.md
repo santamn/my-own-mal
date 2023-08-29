@@ -26,4 +26,9 @@ $ impls/rust/target/release/stepA_mal
 $ make test^rust
 ```
 
-## Clojure
+## 今後やりたい言語
+
+- Clojure
+- Go
+- Haskell: [Axel](https://axellang.github.io/)も試してみたい
+- Julia
