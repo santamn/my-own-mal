@@ -20,19 +20,16 @@ fn main() {
     }
 }
 
-// TODO: read_str関数を呼び出す
 #[allow(non_snake_case)]
 fn READ(input: String) -> MalResult {
     reader::read_str(input)
 }
 
-// MalTypeを受け取りMalTypeを返す
 #[allow(non_snake_case)]
 fn EVAL(input: MalVal) -> MalVal {
     input
 }
 
-// TODO: pr_str関数を呼び出す
 #[allow(non_snake_case)]
 fn PRINT(input: MalVal) -> String {
     printer::pr_str(&input)
@@ -48,7 +45,7 @@ fn rep(input: String) -> Result<String, MalError> {
 //  - MalString: '\'で'\'と'"'をエスケープする
 //  - MalBool
 //  - MalNil
-// 2. 括弧の対応が取れていない場合はエラーを返す
+// 2. 括弧の対応が取れていない場合はエラーを返す: 済
 // 3. リーダーマクロのサポート: tests/step1_read_print.malを参照
 // 4. キーワード、ベクター、ハッシュマップのサポート: 済
 // 5. コメントのサポート: ';'から行末までをコメントとして扱う: 済

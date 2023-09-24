@@ -1,7 +1,8 @@
 use fnv::{FnvHashMap, FnvHashSet};
 use std::collections::LinkedList;
 use std::fmt::Display;
-use std::hash::Hash;
+use std::hash::Hasher;
+use std::hash::{BuildHasher, Hash};
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
@@ -74,6 +75,8 @@ impl MalVal {
     pub fn hashset_with_meta(hashset: FnvHashSet<MalVal>, meta: MalVal) -> Self {
         MalVal::HashSet(Rc::new(hashset), Rc::new(meta))
     }
+
+    // TODO: hash_code関数の実装
 }
 
 impl PartialEq for MalVal {
@@ -97,7 +100,10 @@ impl PartialEq for MalVal {
 impl Eq for MalVal {}
 
 impl Hash for MalVal {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H)
+    where
+        Self: BuildHasher,
+    {
         match self {
             MalVal::Nil => 0.hash(state),
             MalVal::Bool(b) => b.hash(state),
@@ -107,21 +113,46 @@ impl Hash for MalVal {
             MalVal::Symbol(s) => s.hash(state),
             MalVal::List(l, _) => l.hash(state),
             MalVal::Vector(v, _) => v.hash(state),
+            // ref: [集合をハッシュする (Zobrist hashing)](https://trap.jp/post/1594/)
             MalVal::HashMap(m, _) => {
                 state.write_usize(m.len());
-                for (k, v) in m.iter() {
-                    k.hash(state);
-                    v.hash(state);
-                }
+                state.write_u64(
+                    m.iter()
+                        .map(|e| compute_hash(self, &e))
+                        .reduce(|a, b| a ^ b)
+                        .unwrap_or(0),
+                );
             }
             MalVal::HashSet(s, _) => {
                 state.write_usize(s.len());
-                for v in s.iter() {
-                    v.hash(state);
-                }
+                state.write_u64(
+                    s.iter()
+                        .map(|e| compute_hash(self, &e))
+                        .reduce(|a, b| a ^ b)
+                        .unwrap_or(0),
+                );
             }
         }
     }
+}
+
+impl BuildHasher for MalVal {
+    // このHasherがMalValのHashMapで使用しているBuildHasher::Hasherと一致していた方が多分良い
+    type Hasher = fnv::FnvHasher;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        fnv::FnvHasher::default()
+    }
+}
+
+fn compute_hash<T, S>(hash_builder: &S, target: &T) -> u64
+where
+    T: Hash + ?Sized,
+    S: BuildHasher,
+{
+    let mut state = hash_builder.build_hasher();
+    target.hash(&mut state);
+    state.finish()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
