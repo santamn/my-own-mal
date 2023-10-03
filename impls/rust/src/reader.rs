@@ -2,7 +2,6 @@ use crate::types::{MalError, MalResult, MalVal, Paren};
 use fnv::{FnvHashMap, FnvHashSet};
 use std::collections::LinkedList;
 use std::iter::Peekable;
-use std::rc::Rc;
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
@@ -26,7 +25,7 @@ pub fn read_str(input: String) -> MalResult {
 // malのトークンすべてにマッチする正規表現: [\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)
 // - [\s,]*: 任意個の空白とカンマ
 // - ~@: '~@'自体
-// - #{: '#{'自体
+// - #\{: '#{'自体
 // - [\[\]{}()'`~^@]: []{}()'`~^@のいずれか
 // - "(?:\\.|[^\\"])*"?: "で囲まれた文字列(閉じていない場合を含む)
 //  - \\.: \と任意の文字(エスケープされた文字)
@@ -34,10 +33,34 @@ pub fn read_str(input: String) -> MalResult {
 // - ;.*: コメント行
 // - [^\s\[\]{}('"`,;)]*: 空白と[]{}('"`,;)以外の任意の文字
 fn tokenize(input: String) -> Vec<String> {
-    regex!(r###"[\s,]*(~@|#{|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"###)
+    regex!(r###"[\s,]*(~@|#\{|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"###)
         .captures_iter(&input)
         .map(|cap| cap[1].to_string()) // cap[0]はマッチした文字列全体, cap[1]はグループ化した文字列=空白以外の部分
         .filter(|token| !token.starts_with(";")) // コメント行を除外
+        .collect()
+}
+
+fn unescape_string(s: &str) -> String {
+    s.chars()
+        .scan(false, |escaped, c| {
+            if *escaped {
+                *escaped = false;
+                match c {
+                    'n' => Some(Some('\n')),
+                    't' => Some(Some('\t')),
+                    'r' => Some(Some('\r')),
+                    '\\' => Some(Some('\\')),
+                    '"' => Some(Some('"')),
+                    _ => Some(Some(c)),
+                }
+            } else if c == '\\' {
+                *escaped = true;
+                Some(None)
+            } else {
+                Some(Some(c))
+            }
+        })
+        .flatten()
         .collect()
 }
 
@@ -68,7 +91,7 @@ where
     while let Some(token) = reader.peek() {
         if token.as_ref() == ")" {
             reader.next(); // ')'を読み飛ばす
-            return Ok(MalVal::List(Rc::new(l), Rc::new(MalVal::Nil)));
+            return Ok(MalVal::list(l));
         }
         l.push_back(read_form(reader)?);
     }
@@ -86,7 +109,7 @@ where
     while let Some(token) = reader.peek() {
         if token.as_ref() == "]" {
             reader.next(); // ']'を読み飛ばす
-            return Ok(MalVal::Vector(Rc::new(v), Rc::new(MalVal::Nil)));
+            return Ok(MalVal::vec(v));
         }
         v.push(read_form(reader)?);
     }
@@ -104,7 +127,7 @@ where
     while let Some(token) = reader.peek() {
         if token.as_ref() == "}" {
             reader.next(); // "}"を読み飛ばす
-            return Ok(MalVal::HashMap(Rc::new(m), Rc::new(MalVal::Nil)));
+            return Ok(MalVal::hashmap(m));
         }
 
         let key = read_form(reader)?;
@@ -128,7 +151,7 @@ where
     while let Some(token) = reader.peek() {
         if token.as_ref() == "}" {
             reader.next(); // "}"を読み飛ばす
-            return Ok(MalVal::HashSet(Rc::new(s), Rc::new(MalVal::Nil)));
+            return Ok(MalVal::hashset(s));
         }
         s.insert(read_form(reader)?);
     }
@@ -149,7 +172,8 @@ where
             } else if let Ok(n) = token.parse::<i64>() {
                 return Ok(MalVal::Number(n));
             } else if token.starts_with("\"") {
-                if token.ends_with("\"") {
+                let token = unescape_string(token);
+                if token.len() > 1 && token.ends_with("\"") {
                     return Ok(MalVal::String(token[1..token.len() - 1].to_string()));
                 } else {
                     Err(MalError::UncloedQuote)

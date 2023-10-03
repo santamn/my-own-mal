@@ -75,8 +75,6 @@ impl MalVal {
     pub fn hashset_with_meta(hashset: FnvHashSet<MalVal>, meta: MalVal) -> Self {
         MalVal::HashSet(Rc::new(hashset), Rc::new(meta))
     }
-
-    // TODO: hash_code関数の実装
 }
 
 impl PartialEq for MalVal {
@@ -176,7 +174,7 @@ impl Display for MalError {
             MalError::NoInput => write!(f, "no input"),
             MalError::Unbalanced(p) => write!(
                 f,
-                "expected {}, got EOF",
+                "unbalanced: expected {}, got EOF",
                 match p {
                     Paren::Round => ")",
                     Paren::Square => "]",

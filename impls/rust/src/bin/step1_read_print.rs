@@ -10,7 +10,7 @@ fn main() {
         let mut editor = DefaultEditor::new().unwrap();
         let readline = editor.readline("user> ");
         match readline {
-            Ok(line) => println!("{:?}", rep(line)),
+            Ok(line) => println!("{}", rep(line).unwrap_or_else(|e| e.to_string())),
             Err(ReadlineError::Interrupted) => continue,
             Err(ReadlineError::Eof) => break,
             Err(err) => {
