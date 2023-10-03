@@ -16,19 +16,20 @@ $ make stepX
 
 トップレベルで
 ```
-$ impls/rust/target/release/stepA_mal
+$ impls/rust/target/release/stepX_XXX
 ```
 
 ### Test
 
 トップレベルで
 ```
-$ make test^rust
+$ make test^rust^stepX
 ```
 
 ## 今後やりたい言語
 
 - Clojure
 - Go
-- Haskell: [Axel](https://axellang.github.io/)も試してみたい
+- Haskell
 - Julia
+- Zig
