@@ -40,7 +40,7 @@ fn tokenize(input: String) -> Vec<String> {
         .collect()
 }
 
-fn unescape_string(s: &str) -> String {
+fn unescape(s: &str) -> String {
     s.chars()
         .scan(false, |escaped, c| {
             if *escaped {
@@ -172,9 +172,9 @@ where
             } else if let Ok(n) = token.parse::<i64>() {
                 return Ok(MalVal::Number(n));
             } else if token.starts_with("\"") {
-                let token = unescape_string(token);
-                if token.len() > 1 && token.ends_with("\"") {
-                    return Ok(MalVal::String(token[1..token.len() - 1].to_string()));
+                if token.len() >= 2 && regex!(r#"[^\\](\\\\)*"$"#).is_match(token) {
+                    // 末尾がエスケープされていない"で終わる
+                    return Ok(MalVal::String(unescape(&token[1..token.len() - 1])));
                 } else {
                     Err(MalError::UncloedQuote)
                 }
@@ -188,10 +188,10 @@ where
 }
 
 mod tests {
-    use super::*;
-
     #[test]
     fn test_tokenize() {
+        use super::tokenize;
+
         assert_eq!(
             tokenize("(+ 134 234)".to_string()),
             vec!["(", "+", "134", "234", ")"]

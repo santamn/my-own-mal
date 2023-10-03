@@ -6,7 +6,7 @@ pub fn pr_str(form: &MalVal) -> String {
         MalVal::Nil => String::from("nil"),
         MalVal::Bool(b) => b.to_string(),
         MalVal::Number(n) => n.to_string(),
-        MalVal::String(s) => format!("\"{}\"", escape_string(s)),
+        MalVal::String(s) => format!("\"{}\"", escape(s)),
         MalVal::Keyword(k) => format!(":{}", k),
         MalVal::Symbol(s) => s.to_string(),
         MalVal::List(l, _) => format!("({})", l.iter().map(|e| pr_str(e)).join(" ")),
@@ -21,7 +21,7 @@ pub fn pr_str(form: &MalVal) -> String {
     }
 }
 
-fn escape_string(s: &String) -> String {
+fn escape(s: &String) -> String {
     s.chars()
         .map(|c| match c {
             '"' => [Some('\\'), Some('\"')],
