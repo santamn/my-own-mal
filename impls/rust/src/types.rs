@@ -174,7 +174,7 @@ impl Display for MalError {
             MalError::NoInput => write!(f, "no input"),
             MalError::Unbalanced(p) => write!(
                 f,
-                "unbalanced: expected {}, got EOF",
+                "expected {}, got EOF",
                 match p {
                     Paren::Round => ")",
                     Paren::Square => "]",

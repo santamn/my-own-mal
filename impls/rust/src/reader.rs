@@ -77,6 +77,7 @@ where
         "[" => read_vec(reader),
         "{" => read_hashmap(reader),
         "#{" => read_hashset(reader),
+        "'" | "`" | "~" | "~@" | "@" => read_reader_macro(reader),
         _ => read_atom(reader),
     }
 }
@@ -185,6 +186,24 @@ where
             }
         }
     }
+}
+
+fn read_reader_macro<I, S>(reader: &mut Peekable<I>) -> MalResult
+where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    Ok(MalVal::list(LinkedList::from_iter([
+        MalVal::symbol(match reader.next().unwrap().as_ref() {
+            "'" => "quote",
+            "`" => "quasiquote",
+            "~" => "unquote",
+            "~@" => "splice-unquote",
+            "@" => "deref",
+            _ => unreachable!(),
+        }),
+        read_form(reader)?,
+    ])))
 }
 
 mod tests {
