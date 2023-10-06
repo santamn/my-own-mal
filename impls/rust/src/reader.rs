@@ -10,10 +10,12 @@ macro_rules! regex {
     }};
 }
 
+type Reader = Peekable<std::vec::IntoIter<String>>;
+
 // tokenize関数を呼び出しReaderオブジェクトを作成する
 // その後、Readerオブジェクトを引数にしてread_str関数を呼び出す
 pub fn read_str(input: String) -> MalResult {
-    read_form(&mut tokenize(input).iter().peekable())
+    read_form(&mut tokenize(input).into_iter().peekable())
 }
 
 // 正規表現についてのメモ
@@ -67,30 +69,22 @@ fn unescape(s: &str) -> String {
 // ここまでLexer
 // 以下がParser
 
-fn read_form<I, S>(reader: &mut Peekable<I>) -> MalResult
-where
-    I: Iterator<Item = S>,
-    S: AsRef<str>,
-{
+fn read_form(reader: &mut Reader) -> MalResult {
     match reader.peek().ok_or(MalError::NoInput)?.as_ref() {
+        "'" | "`" | "~" | "~@" | "@" => read_reader_macro(reader),
         "(" => read_list(reader),
         "[" => read_vec(reader),
         "{" => read_hashmap(reader),
         "#{" => read_hashset(reader),
-        "'" | "`" | "~" | "~@" | "@" => read_reader_macro(reader),
         _ => read_atom(reader),
     }
 }
 
-fn read_list<I, S>(reader: &mut Peekable<I>) -> MalResult
-where
-    I: Iterator<Item = S>,
-    S: AsRef<str>,
-{
+fn read_list(reader: &mut Reader) -> MalResult {
     let mut l = LinkedList::new();
     reader.next(); // '('を読み飛ばす
     while let Some(token) = reader.peek() {
-        if token.as_ref() == ")" {
+        if token == ")" {
             reader.next(); // ')'を読み飛ばす
             return Ok(MalVal::list(l));
         }
@@ -100,15 +94,11 @@ where
     Err(MalError::Unbalanced(Paren::Round))
 }
 
-fn read_vec<I, S>(reader: &mut Peekable<I>) -> MalResult
-where
-    I: Iterator<Item = S>,
-    S: AsRef<str>,
-{
+fn read_vec(reader: &mut Reader) -> MalResult {
     let mut v = Vec::new();
     reader.next(); // '['を読み飛ばす
     while let Some(token) = reader.peek() {
-        if token.as_ref() == "]" {
+        if token == "]" {
             reader.next(); // ']'を読み飛ばす
             return Ok(MalVal::vec(v));
         }
@@ -118,15 +108,11 @@ where
     Err(MalError::Unbalanced(Paren::Square))
 }
 
-fn read_hashmap<I, S>(reader: &mut Peekable<I>) -> MalResult
-where
-    I: Iterator<Item = S>,
-    S: AsRef<str>,
-{
+fn read_hashmap(reader: &mut Reader) -> MalResult {
     let mut m = FnvHashMap::default();
     reader.next(); // "{"を読み飛ばす
     while let Some(token) = reader.peek() {
-        if token.as_ref() == "}" {
+        if token == "}" {
             reader.next(); // "}"を読み飛ばす
             return Ok(MalVal::hashmap(m));
         }
@@ -142,15 +128,11 @@ where
     Err(MalError::Unbalanced(Paren::Curly))
 }
 
-fn read_hashset<I, S>(reader: &mut Peekable<I>) -> MalResult
-where
-    I: Iterator<Item = S>,
-    S: AsRef<str>,
-{
+fn read_hashset(reader: &mut Reader) -> MalResult {
     let mut s = FnvHashSet::default();
     reader.next(); // "#{"を読み飛ばす
     while let Some(token) = reader.peek() {
-        if token.as_ref() == "}" {
+        if token == "}" {
             reader.next(); // "}"を読み飛ばす
             return Ok(MalVal::hashset(s));
         }
@@ -160,11 +142,7 @@ where
     Err(MalError::Unbalanced(Paren::Curly))
 }
 
-fn read_atom<I, S>(reader: &mut I) -> MalResult
-where
-    I: Iterator<Item = S>,
-    S: AsRef<str>,
-{
+fn read_atom(reader: &mut Reader) -> MalResult {
     match reader.next().unwrap().as_ref() {
         "nil" => Ok(MalVal::Nil),
         token => {
@@ -188,13 +166,9 @@ where
     }
 }
 
-fn read_reader_macro<I, S>(reader: &mut Peekable<I>) -> MalResult
-where
-    I: Iterator<Item = S>,
-    S: AsRef<str>,
-{
+fn read_reader_macro(reader: &mut Reader) -> MalResult {
     Ok(MalVal::list(LinkedList::from_iter([
-        MalVal::symbol(match reader.next().unwrap().as_ref() {
+        MalVal::symbol(match reader.next().unwrap().as_str() {
             "'" => "quote",
             "`" => "quasiquote",
             "~" => "unquote",
