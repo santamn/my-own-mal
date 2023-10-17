@@ -166,6 +166,7 @@ pub enum MalError {
     Unbalanced(Paren),
     UncloedQuote,
     OddMap(usize),
+    DividedByZero,
 }
 
 impl Display for MalError {
@@ -183,6 +184,7 @@ impl Display for MalError {
             ),
             MalError::UncloedQuote => write!(f, "expected \", got EOF"),
             MalError::OddMap(n) => write!(f, "odd number of map items: {}", n),
+            MalError::DividedByZero => write!(f, "divided by zero"),
         }
     }
 }

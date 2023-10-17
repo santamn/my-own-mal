@@ -6,6 +6,9 @@ step0:
 step1:
 	cargo build --release --bin step1_read_print
 
+step2:
+	cargo build --release --bin step2_eval
+
 build:
 	cargo build --release
 

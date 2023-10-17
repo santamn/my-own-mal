@@ -35,7 +35,7 @@ pub fn read_str(input: String) -> MalResult {
 // - ;.*: コメント行
 // - [^\s\[\]{}('"`,;)]*: 空白と[]{}('"`,;)以外の任意の文字
 fn tokenize(input: String) -> Vec<String> {
-    regex!(r###"[\s,]*(~@|#\{|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"###)
+    regex!(r#"[\s,]*(~@|#\{|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"#)
         .captures_iter(&input)
         .map(|cap| cap[1].to_string()) // cap[0]はマッチした文字列全体, cap[1]はグループ化した文字列=空白以外の部分
         .filter(|token| !token.starts_with(";")) // コメント行を除外
@@ -158,9 +158,9 @@ fn read_atom(reader: &mut Reader) -> MalResult {
                     Err(MalError::UncloedQuote)
                 }
             } else if token.starts_with(":") {
-                Ok(MalVal::Keyword(token[1..].to_string()))
+                Ok(MalVal::keyword(&token[1..]))
             } else {
-                Ok(MalVal::Symbol(token.to_string()))
+                Ok(MalVal::symbol(token))
             }
         }
     }
