@@ -1,47 +1,38 @@
-use fnv::{FnvHashMap, FnvHashSet};
-use std::collections::LinkedList;
+use fnv::{FnvBuildHasher, FnvHashMap};
+use std::collections::{HashMap, HashSet, LinkedList};
 use std::fmt::Display;
-use std::hash::Hasher;
-use std::hash::{BuildHasher, Hash};
+use std::hash::{BuildHasher, Hash, Hasher};
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
-pub enum MalVal {
+pub enum MalVal<S = FnvBuildHasher> {
     Nil,
     Bool(bool),
     Number(i64),
-    String(String),
-    Keyword(String),
-    Symbol(String),
+    String(Rc<String>),
+    Keyword(Rc<String>),
+    Symbol(Rc<String>),
     List(Rc<LinkedList<MalVal>>, Rc<MalVal>),
     Vector(Rc<Vec<MalVal>>, Rc<MalVal>),
-    HashMap(Rc<FnvHashMap<MalVal, MalVal>>, Rc<MalVal>),
-    HashSet(Rc<FnvHashSet<MalVal>>, Rc<MalVal>),
+    HashMap(Rc<HashMap<MalVal, MalVal, S>>, Rc<MalVal>),
+    HashSet(Rc<HashSet<MalVal, S>>, Rc<MalVal>),
+    Func(fn(Vec<MalVal>) -> MalResult, Rc<MalVal>),
 }
 
-impl MalVal {
-    pub fn nil() -> Self {
-        MalVal::Nil
-    }
-
-    pub fn bool(b: bool) -> Self {
-        MalVal::Bool(b)
-    }
-
-    pub fn number(n: i64) -> Self {
-        MalVal::Number(n)
-    }
-
+impl<S> MalVal<S>
+where
+    S: BuildHasher + Clone,
+{
     pub fn string<T: Into<String>>(str: T) -> Self {
-        MalVal::String(str.into())
+        MalVal::String(Rc::new(str.into()))
     }
 
     pub fn keyword<T: Into<String>>(str: T) -> Self {
-        MalVal::Keyword(str.into())
+        MalVal::Keyword(Rc::new(str.into()))
     }
 
     pub fn symbol<T: Into<String>>(str: T) -> Self {
-        MalVal::Symbol(str.into())
+        MalVal::Symbol(Rc::new(str.into()))
     }
 
     pub fn list(list: LinkedList<MalVal>) -> Self {
@@ -52,27 +43,27 @@ impl MalVal {
         MalVal::List(Rc::new(list), Rc::new(meta))
     }
 
-    pub fn vec(vec: Vec<Self>) -> Self {
-        Self::vec_with_meta(vec, MalVal::Nil)
+    pub fn vec(vec: Vec<MalVal>) -> Self {
+        MalVal::vec_with_meta(vec, MalVal::Nil)
     }
 
-    pub fn vec_with_meta(vec: Vec<Self>, meta: Self) -> Self {
+    pub fn vec_with_meta(vec: Vec<MalVal>, meta: MalVal) -> Self {
         MalVal::Vector(Rc::new(vec), Rc::new(meta))
     }
 
-    pub fn hashmap(hashmap: FnvHashMap<MalVal, MalVal>) -> Self {
+    pub fn hashmap(hashmap: HashMap<MalVal, MalVal, S>) -> Self {
         MalVal::hashmap_with_meta(hashmap, MalVal::Nil)
     }
 
-    pub fn hashmap_with_meta(hashmap: FnvHashMap<MalVal, MalVal>, meta: MalVal) -> Self {
+    pub fn hashmap_with_meta(hashmap: HashMap<MalVal, MalVal, S>, meta: MalVal) -> Self {
         MalVal::HashMap(Rc::new(hashmap), Rc::new(meta))
     }
 
-    pub fn hashset(hashset: FnvHashSet<MalVal>) -> Self {
+    pub fn hashset(hashset: HashSet<MalVal, S>) -> Self {
         MalVal::hashset_with_meta(hashset, MalVal::Nil)
     }
 
-    pub fn hashset_with_meta(hashset: FnvHashSet<MalVal>, meta: MalVal) -> Self {
+    pub fn hashset_with_meta(hashset: HashSet<MalVal, S>, meta: MalVal) -> Self {
         MalVal::HashSet(Rc::new(hashset), Rc::new(meta))
     }
 }
@@ -98,17 +89,12 @@ impl PartialEq for MalVal {
 impl Eq for MalVal {}
 
 impl Hash for MalVal {
-    fn hash<H: Hasher>(&self, state: &mut H)
-    where
-        Self: BuildHasher,
-    {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
             MalVal::Nil => 0.hash(state),
             MalVal::Bool(b) => b.hash(state),
             MalVal::Number(n) => n.hash(state),
-            MalVal::String(s) => s.hash(state),
-            MalVal::Keyword(s) => s.hash(state),
-            MalVal::Symbol(s) => s.hash(state),
+            MalVal::String(s) | MalVal::Keyword(s) | MalVal::Symbol(s) => s.hash(state),
             MalVal::List(l, _) => l.hash(state),
             MalVal::Vector(v, _) => v.hash(state),
             // ref: [集合をハッシュする (Zobrist hashing)](https://trap.jp/post/1594/)
@@ -116,41 +102,33 @@ impl Hash for MalVal {
                 state.write_usize(m.len());
                 state.write_u64(
                     m.iter()
-                        .map(|e| compute_hash(self, &e))
+                        .map(|e| hash_code(m.hasher(), &e))
                         .reduce(|a, b| a ^ b)
-                        .unwrap_or(0),
+                        .unwrap_or(1),
                 );
             }
             MalVal::HashSet(s, _) => {
                 state.write_usize(s.len());
                 state.write_u64(
                     s.iter()
-                        .map(|e| compute_hash(self, &e))
+                        .map(|e| hash_code(s.hasher(), e))
                         .reduce(|a, b| a ^ b)
-                        .unwrap_or(0),
+                        .unwrap_or(2),
                 );
             }
+            MalVal::Func(f, _) => state.write_usize(f as *const _ as usize),
         }
     }
 }
 
-impl BuildHasher for MalVal {
-    // このHasherがMalValのHashMapで使用しているBuildHasher::Hasherと一致していた方が多分良い
-    type Hasher = fnv::FnvHasher;
-
-    fn build_hasher(&self) -> Self::Hasher {
-        fnv::FnvHasher::default()
-    }
-}
-
-fn compute_hash<T, S>(hash_builder: &S, target: &T) -> u64
+fn hash_code<B, T>(b: &B, t: &T) -> u64
 where
-    T: Hash + ?Sized,
-    S: BuildHasher,
+    B: BuildHasher,
+    T: Hash,
 {
-    let mut state = hash_builder.build_hasher();
-    target.hash(&mut state);
-    state.finish()
+    let mut hasher = b.build_hasher();
+    t.hash(&mut hasher);
+    hasher.finish()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -167,6 +145,7 @@ pub enum MalError {
     UncloedQuote,
     OddMap(usize),
     DividedByZero,
+    NotFound(String),
 }
 
 impl Display for MalError {
@@ -185,11 +164,13 @@ impl Display for MalError {
             MalError::UncloedQuote => write!(f, "expected \", got EOF"),
             MalError::OddMap(n) => write!(f, "odd number of map items: {}", n),
             MalError::DividedByZero => write!(f, "divided by zero"),
+            MalError::NotFound(s) => write!(f, "symbol was not found: {}", s),
         }
     }
 }
 
 pub type MalResult = Result<MalVal, MalError>;
+pub type ReplEnv = FnvHashMap<String, MalVal>;
 
 #[cfg(test)]
 mod tests {

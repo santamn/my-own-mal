@@ -153,7 +153,7 @@ fn read_atom(reader: &mut Reader) -> MalResult {
             } else if token.starts_with("\"") {
                 if token.len() >= 2 && regex!(r#"[^\\](\\\\)*"$"#).is_match(token) {
                     // 末尾がエスケープされていない"で終わる
-                    return Ok(MalVal::String(unescape(&token[1..token.len() - 1])));
+                    return Ok(MalVal::string(unescape(&token[1..token.len() - 1])));
                 } else {
                     Err(MalError::UncloedQuote)
                 }

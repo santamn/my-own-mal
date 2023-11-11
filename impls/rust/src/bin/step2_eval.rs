@@ -1,16 +1,19 @@
 use rust::printer;
 use rust::reader;
 use rust::types::MalError;
+use rust::types::ReplEnv;
 use rust::types::{MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 
 fn main() {
+    let env = ReplEnv::default();
+
     loop {
         let mut editor = DefaultEditor::new().unwrap();
         let readline = editor.readline("user> ");
         match readline {
-            Ok(line) => println!("{}", rep(line).unwrap_or_else(|e| e.to_string())),
+            Ok(line) => println!("{}", rep(line, &env).unwrap_or_else(|e| e.to_string())),
             Err(ReadlineError::Interrupted) => continue,
             Err(ReadlineError::Eof) => break,
             Err(err) => {
@@ -26,8 +29,17 @@ fn READ(input: String) -> MalResult {
 }
 
 #[allow(non_snake_case)]
-fn EVAL(input: MalVal) -> MalVal {
-    input
+fn EVAL(input: MalVal, env: &ReplEnv) -> MalResult {
+    match input {
+        MalVal::List(list, _) => {
+            if list.is_empty() {
+                return Ok(input);
+            }
+
+            Ok(input)
+        }
+        _ => eval_ast(input, env),
+    }
 }
 
 #[allow(non_snake_case)]
@@ -35,8 +47,21 @@ fn PRINT(input: MalVal) -> String {
     printer::pr_str(&input)
 }
 
-fn rep(input: String) -> Result<String, MalError> {
-    Ok(PRINT(EVAL(READ(input)?)))
+fn rep(input: String, env: &ReplEnv) -> Result<String, MalError> {
+    Ok(PRINT(EVAL(READ(input)?, env)?))
 }
 
-// 追加課題
+fn eval_ast(ast: MalVal, env: &ReplEnv) -> MalResult {
+    match ast {
+        MalVal::Symbol(s) => env
+            .get(&(*s))
+            .ok_or(MalError::NotFound(s.to_string()))
+            .map(|v| v.clone()),
+        MalVal::List(l, _) => Ok(MalVal::list(
+            l.iter()
+                .map(|item| EVAL(item.clone(), env))
+                .collect::<Result<_, _>>()?,
+        )),
+        _ => Ok(ast),
+    }
+}
