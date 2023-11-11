@@ -31,12 +31,19 @@ fn READ(input: String) -> MalResult {
 #[allow(non_snake_case)]
 fn EVAL(input: MalVal, env: &ReplEnv) -> MalResult {
     match input {
-        MalVal::List(list, _) => {
+        MalVal::List(ref list, _) => {
             if list.is_empty() {
                 return Ok(input);
             }
 
-            Ok(input)
+            match eval_ast(list[0].clone(), env) {
+                Ok(MalVal::Func(f, _)) => f(list[1..]
+                    .iter()
+                    .map(|item| EVAL(item.clone(), env))
+                    .collect::<Result<_, _>>()?),
+                Ok(f) => Err(MalError::NotFunction(f)),
+                Err(e) => Err(e),
+            }
         }
         _ => eval_ast(input, env),
     }

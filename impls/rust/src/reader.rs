@@ -81,14 +81,14 @@ fn read_form(reader: &mut Reader) -> MalResult {
 }
 
 fn read_list(reader: &mut Reader) -> MalResult {
-    let mut l = LinkedList::new();
+    let mut l = Vec::new();
     reader.next(); // '('を読み飛ばす
     while let Some(token) = reader.peek() {
         if token == ")" {
             reader.next(); // ')'を読み飛ばす
             return Ok(MalVal::list(l));
         }
-        l.push_back(read_form(reader)?);
+        l.push(read_form(reader)?);
     }
 
     Err(MalError::Unbalanced(Paren::Round))
@@ -167,7 +167,7 @@ fn read_atom(reader: &mut Reader) -> MalResult {
 }
 
 fn read_reader_macro(reader: &mut Reader) -> MalResult {
-    Ok(MalVal::list(LinkedList::from_iter([
+    Ok(MalVal::list(Vec::from_iter([
         MalVal::symbol(match reader.next().unwrap().as_str() {
             "'" => "quote",
             "`" => "quasiquote",

@@ -1,8 +1,11 @@
 use fnv::{FnvBuildHasher, FnvHashMap};
-use std::collections::{HashMap, HashSet, LinkedList};
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
+use std::fmt::{Formatter, Result as FmtResult};
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::rc::Rc;
+
+use crate::printer::pr_str;
 
 #[derive(Debug, Clone)]
 pub enum MalVal<S = FnvBuildHasher> {
@@ -12,7 +15,7 @@ pub enum MalVal<S = FnvBuildHasher> {
     String(Rc<String>),
     Keyword(Rc<String>),
     Symbol(Rc<String>),
-    List(Rc<LinkedList<MalVal>>, Rc<MalVal>),
+    List(Rc<Vec<MalVal>>, Rc<MalVal>),
     Vector(Rc<Vec<MalVal>>, Rc<MalVal>),
     HashMap(Rc<HashMap<MalVal, MalVal, S>>, Rc<MalVal>),
     HashSet(Rc<HashSet<MalVal, S>>, Rc<MalVal>),
@@ -35,11 +38,11 @@ where
         MalVal::Symbol(Rc::new(str.into()))
     }
 
-    pub fn list(list: LinkedList<MalVal>) -> Self {
+    pub fn list(list: Vec<MalVal>) -> Self {
         MalVal::list_with_meta(list, MalVal::Nil)
     }
 
-    pub fn list_with_meta(list: LinkedList<MalVal>, meta: MalVal) -> Self {
+    pub fn list_with_meta(list: Vec<MalVal>, meta: MalVal) -> Self {
         MalVal::List(Rc::new(list), Rc::new(meta))
     }
 
@@ -131,6 +134,12 @@ where
     hasher.finish()
 }
 
+impl Display for MalVal {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "{}", pr_str(self))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Paren {
     Round,  // ()
@@ -146,6 +155,7 @@ pub enum MalError {
     OddMap(usize),
     DividedByZero,
     NotFound(String),
+    NotFunction(MalVal),
 }
 
 impl Display for MalError {
@@ -165,6 +175,7 @@ impl Display for MalError {
             MalError::OddMap(n) => write!(f, "odd number of map items: {}", n),
             MalError::DividedByZero => write!(f, "divided by zero"),
             MalError::NotFound(s) => write!(f, "symbol was not found: {}", s),
+            MalError::NotFunction(v) => write!(f, "not a function: {}", v),
         }
     }
 }
