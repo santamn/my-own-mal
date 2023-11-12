@@ -1,6 +1,5 @@
 use crate::types::{MalError, MalResult, MalVal, Paren};
 use fnv::{FnvHashMap, FnvHashSet};
-use std::collections::LinkedList;
 use std::iter::Peekable;
 
 macro_rules! regex {

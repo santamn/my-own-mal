@@ -69,6 +69,30 @@ where
     pub fn hashset_with_meta(hashset: HashSet<MalVal, S>, meta: MalVal) -> Self {
         MalVal::HashSet(Rc::new(hashset), Rc::new(meta))
     }
+
+    pub fn func(f: fn(Vec<MalVal>) -> MalResult) -> Self {
+        MalVal::func_with_meta(f, MalVal::Nil)
+    }
+
+    pub fn func_with_meta(f: fn(Vec<MalVal>) -> MalResult, meta: MalVal) -> Self {
+        MalVal::Func(f, Rc::new(meta))
+    }
+
+    pub fn type_str(&self) -> String {
+        match self {
+            MalVal::Nil => "nil".to_string(),
+            MalVal::Bool(_) => "bool".to_string(),
+            MalVal::Number(_) => "number".to_string(),
+            MalVal::String(_) => "string".to_string(),
+            MalVal::Keyword(_) => "keyword".to_string(),
+            MalVal::Symbol(_) => "symbol".to_string(),
+            MalVal::List(_, _) => "list".to_string(),
+            MalVal::Vector(_, _) => "vector".to_string(),
+            MalVal::HashMap(_, _) => "hash-map".to_string(),
+            MalVal::HashSet(_, _) => "hash-set".to_string(),
+            MalVal::Func(_, _) => "function".to_string(),
+        }
+    }
 }
 
 impl PartialEq for MalVal {
@@ -156,6 +180,7 @@ pub enum MalError {
     DividedByZero,
     NotFound(String),
     NotFunction(MalVal),
+    InvalidType(String, String),
 }
 
 impl Display for MalError {
@@ -176,6 +201,9 @@ impl Display for MalError {
             MalError::DividedByZero => write!(f, "divided by zero"),
             MalError::NotFound(s) => write!(f, "symbol was not found: {}", s),
             MalError::NotFunction(v) => write!(f, "not a function: {}", v),
+            MalError::InvalidType(expected, got) => {
+                write!(f, "expected {}, got {}", expected, got)
+            }
         }
     }
 }

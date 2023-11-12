@@ -5,9 +5,70 @@ use rust::types::ReplEnv;
 use rust::types::{MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
+use std::rc::Rc;
 
 fn main() {
-    let env = ReplEnv::default();
+    let mut env = ReplEnv::default();
+    env.insert(
+        "+".to_string(),
+        MalVal::Func(
+            |args| {
+                args.iter()
+                    .try_fold(MalVal::Number(0), |acc, x| match (acc, x) {
+                        (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc + x)),
+                        _ => Err(MalError::InvalidType("number".to_string(), x.type_str())),
+                    })
+            },
+            Rc::new(MalVal::Nil),
+        ),
+    );
+    env.insert(
+        "-".to_string(),
+        MalVal::Func(
+            |args| {
+                args.iter()
+                    .skip(1)
+                    .try_fold(args[0].clone(), |acc, x| match (acc, x) {
+                        (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc - x)),
+                        _ => Err(MalError::InvalidType("number".to_string(), x.type_str())),
+                    })
+            },
+            Rc::new(MalVal::Nil),
+        ),
+    );
+    env.insert(
+        "*".to_string(),
+        MalVal::Func(
+            |args| {
+                args.iter()
+                    .try_fold(MalVal::Number(1), |acc, x| match (acc, x) {
+                        (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc * x)),
+                        _ => Err(MalError::InvalidType("number".to_string(), x.type_str())),
+                    })
+            },
+            Rc::new(MalVal::Nil),
+        ),
+    );
+    env.insert(
+        "/".to_string(),
+        MalVal::Func(
+            |args| {
+                args.iter()
+                    .skip(1)
+                    .try_fold(args[0].clone(), |acc, x| match (acc, x) {
+                        (MalVal::Number(acc), MalVal::Number(x)) => {
+                            if *x == 0 {
+                                Err(MalError::DividedByZero)
+                            } else {
+                                Ok(MalVal::Number(acc / x))
+                            }
+                        }
+                        _ => Err(MalError::InvalidType("number".to_string(), x.type_str())),
+                    })
+            },
+            Rc::new(MalVal::Nil),
+        ),
+    );
 
     loop {
         let mut editor = DefaultEditor::new().unwrap();
