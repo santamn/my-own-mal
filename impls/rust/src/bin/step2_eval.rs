@@ -130,6 +130,16 @@ fn eval_ast(ast: MalVal, env: &ReplEnv) -> MalResult {
                 .map(|item| EVAL(item.clone(), env))
                 .collect::<Result<_, _>>()?,
         )),
+        MalVal::Vector(v, _) => Ok(MalVal::vec(
+            v.iter()
+                .map(|item| EVAL(item.clone(), env))
+                .collect::<Result<_, _>>()?,
+        )),
+        MalVal::HashMap(m, _) => Ok(MalVal::hashmap(
+            m.iter()
+                .map(|(k, v)| Ok((k.clone(), EVAL(v.clone(), env)?)))
+                .collect::<Result<_, _>>()?,
+        )),
         _ => Ok(ast),
     }
 }
