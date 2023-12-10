@@ -121,7 +121,18 @@ impl Hash for MalVal {
             MalVal::Nil => 0.hash(state),
             MalVal::Bool(b) => b.hash(state),
             MalVal::Number(n) => n.hash(state),
-            MalVal::String(s) | MalVal::Keyword(s) | MalVal::Symbol(s) => s.hash(state),
+            MalVal::String(s) => {
+                state.write_u8(1);
+                s.hash(state)
+            }
+            MalVal::Keyword(s) => {
+                state.write_u8(2);
+                s.hash(state)
+            }
+            MalVal::Symbol(s) => {
+                state.write_u8(3);
+                s.hash(state)
+            }
             MalVal::List(l, _) => l.hash(state),
             MalVal::Vector(v, _) => v.hash(state),
             // ref: [集合をハッシュする (Zobrist hashing)](https://trap.jp/post/1594/)
@@ -184,7 +195,7 @@ pub enum MalError {
 }
 
 impl Display for MalError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             MalError::NoInput => write!(f, "no input"),
             MalError::Unbalanced(p) => write!(

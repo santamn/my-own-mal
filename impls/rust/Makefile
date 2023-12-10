@@ -9,6 +9,9 @@ step1:
 step2:
 	cargo build --release --bin step2_eval
 
+step3:
+	cargo build --release --bin step3_env
+
 build:
 	cargo build --release
 
