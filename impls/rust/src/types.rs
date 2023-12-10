@@ -142,7 +142,7 @@ impl Hash for MalVal {
                     m.iter()
                         .map(|e| hash_code(m.hasher(), &e))
                         .reduce(|a, b| a ^ b)
-                        .unwrap_or(1),
+                        .unwrap_or(4),
                 );
             }
             MalVal::HashSet(s, _) => {
@@ -151,7 +151,7 @@ impl Hash for MalVal {
                     s.iter()
                         .map(|e| hash_code(s.hasher(), e))
                         .reduce(|a, b| a ^ b)
-                        .unwrap_or(2),
+                        .unwrap_or(5),
                 );
             }
             MalVal::Func(f, _) => state.write_usize(f as *const _ as usize),
