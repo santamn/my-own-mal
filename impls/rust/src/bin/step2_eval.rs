@@ -1,11 +1,15 @@
+use fnv::FnvHashMap;
 use rust::printer;
 use rust::reader;
 use rust::types::MalError;
-use rust::types::ReplEnv;
 use rust::types::{MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::rc::Rc;
+
+use rust::printer::pr_str;
+
+type ReplEnv = FnvHashMap<String, MalVal>;
 
 fn main() {
     let mut env = ReplEnv::default();
@@ -16,7 +20,11 @@ fn main() {
                 args.iter()
                     .try_fold(MalVal::Number(0), |acc, x| match (acc, x) {
                         (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc + x)),
-                        _ => Err(MalError::InvalidType("number".to_string(), x.type_str())),
+                        _ => Err(MalError::InvalidType(
+                            pr_str(x),
+                            "number".to_string(),
+                            x.type_str(),
+                        )),
                     })
             },
             Rc::new(MalVal::Nil),
@@ -30,7 +38,11 @@ fn main() {
                     .skip(1)
                     .try_fold(args[0].clone(), |acc, x| match (acc, x) {
                         (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc - x)),
-                        _ => Err(MalError::InvalidType("number".to_string(), x.type_str())),
+                        _ => Err(MalError::InvalidType(
+                            pr_str(x),
+                            "number".to_string(),
+                            x.type_str(),
+                        )),
                     })
             },
             Rc::new(MalVal::Nil),
@@ -43,7 +55,11 @@ fn main() {
                 args.iter()
                     .try_fold(MalVal::Number(1), |acc, x| match (acc, x) {
                         (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc * x)),
-                        _ => Err(MalError::InvalidType("number".to_string(), x.type_str())),
+                        _ => Err(MalError::InvalidType(
+                            pr_str(x),
+                            "number".to_string(),
+                            x.type_str(),
+                        )),
                     })
             },
             Rc::new(MalVal::Nil),
@@ -63,7 +79,11 @@ fn main() {
                                 Ok(MalVal::Number(acc / x))
                             }
                         }
-                        _ => Err(MalError::InvalidType("number".to_string(), x.type_str())),
+                        _ => Err(MalError::InvalidType(
+                            pr_str(x),
+                            "number".to_string(),
+                            x.type_str(),
+                        )),
                     })
             },
             Rc::new(MalVal::Nil),
@@ -102,7 +122,11 @@ fn EVAL(input: MalVal, env: &ReplEnv) -> MalResult {
                     .iter()
                     .map(|item| EVAL(item.clone(), env))
                     .collect::<Result<_, _>>()?),
-                Ok(f) => Err(MalError::NotFunction(f)),
+                Ok(f) => Err(MalError::InvalidType(
+                    "eliminated".to_string(),
+                    "symbol".to_string(),
+                    list[1].type_str(),
+                )),
                 Err(e) => Err(e),
             }
         }
