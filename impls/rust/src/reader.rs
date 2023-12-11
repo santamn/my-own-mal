@@ -116,12 +116,14 @@ fn read_hashmap(reader: &mut Reader) -> MalResult {
             return Ok(MalVal::hashmap(m));
         }
 
-        let key = read_form(reader)?;
-        if let Ok(value) = read_form(reader) {
-            m.insert(key, value);
-        } else {
-            return Err(MalError::OddMap(m.len() * 2 + 1));
-        }
+        m.insert(
+            read_form(reader)?,
+            match read_form(reader) {
+                Ok(v) => v,
+                Err(MalError::NoInput) => MalVal::Nil,
+                err => return err,
+            },
+        );
     }
 
     Err(MalError::Unbalanced(Paren::Curly))

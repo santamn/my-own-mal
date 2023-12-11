@@ -1,4 +1,4 @@
-use fnv::{FnvBuildHasher, FnvHashMap};
+use fnv::FnvBuildHasher;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::fmt::{Formatter, Result as FmtResult};
@@ -183,15 +183,35 @@ pub enum Paren {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Arity(pub usize, pub bool);
+
+impl Display for Arity {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            f,
+            "{}",
+            if self.1 {
+                format!("{}+", self.0)
+            } else {
+                format!("{}", self.0)
+            }
+        )
+    }
+}
+
+pub type MalResult = Result<MalVal, MalError>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MalError {
+    // Read時のエラー
     NoInput,
     Unbalanced(Paren),
     UncloedQuote,
-    OddMap(usize),
+    // Eval時のエラー
     DividedByZero,
     NotFound(String),
-    NotFunction(MalVal),
-    InvalidType(String, String),
+    InvalidType(String, String, String),
+    WrongArity(String, Arity, usize),
 }
 
 impl Display for MalError {
@@ -208,19 +228,19 @@ impl Display for MalError {
                 }
             ),
             MalError::UncloedQuote => write!(f, "expected \", got EOF"),
-            MalError::OddMap(n) => write!(f, "odd number of map items: {}", n),
             MalError::DividedByZero => write!(f, "divided by zero"),
             MalError::NotFound(s) => write!(f, "symbol was not found: {}", s),
-            MalError::NotFunction(v) => write!(f, "not a function: {}", v),
-            MalError::InvalidType(expected, got) => {
-                write!(f, "expected {}, got {}", expected, got)
+            MalError::InvalidType(name, expected, got) => {
+                write!(f, "expected {} for {}, got {}", expected, name, got)
             }
+            MalError::WrongArity(name, expected, got) => write!(
+                f,
+                "wrong number of arguments for {}: expected {}, got {}",
+                name, expected, got
+            ),
         }
     }
 }
-
-pub type MalResult = Result<MalVal, MalError>;
-pub type ReplEnv = FnvHashMap<String, MalVal>;
 
 #[cfg(test)]
 mod tests {
