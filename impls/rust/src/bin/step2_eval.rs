@@ -122,7 +122,7 @@ fn EVAL(input: MalVal, env: &ReplEnv) -> MalResult {
                     .iter()
                     .map(|item| EVAL(item.clone(), env))
                     .collect::<Result<_, _>>()?),
-                Ok(f) => Err(MalError::InvalidType(
+                Ok(_) => Err(MalError::InvalidType(
                     "eliminated".to_string(),
                     "symbol".to_string(),
                     list[1].type_str(),
