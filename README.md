@@ -4,6 +4,11 @@
 
 ## Rust
 
+### 参考にしたもの
+
+- [mal-rust](https://github.com/seven1m/mal-rust/tree/master/rust/src)
+- [mal/impls/rust](https://github.com/kanaka/mal/blob/master/impls/rust)
+
 ### Build
 
 impls/rustディレクトリで
@@ -32,4 +37,6 @@ $ make test^rust^stepX
 - Go
 - Haskell
 - Julia
+- Scala
+- Scheme
 - Zig
