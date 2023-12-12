@@ -135,12 +135,9 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                 return Ok(input);
             }
 
-            match eval_ast(list[0].clone(), env) {
-                Ok(MalVal::Func(f, _)) => f(list[1..]
-                    .iter()
-                    .map(|item| EVAL(item.clone(), env))
-                    .collect::<Result<_, _>>()?),
-                Ok(MalVal::Symbol(s)) => match s.as_str() {
+            // 特殊フォームの処理
+            if let MalVal::Symbol(s) = &list[0] {
+                match s.as_str() {
                     "def!" => {
                         if list.len() != 3 {
                             return Err(MalError::WrongArity(
@@ -153,13 +150,13 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                         if let MalVal::Symbol(s) = &list[1] {
                             let val = EVAL(list[2].clone(), env)?;
                             env.set(s.to_string(), val.clone());
-                            Ok(val)
+                            return Ok(val);
                         } else {
-                            Err(MalError::InvalidType(
+                            return Err(MalError::InvalidType(
                                 s.to_string(),
                                 "symbol".to_string(),
                                 list[1].type_str(),
-                            ))
+                            ));
                         }
                     }
                     "let*" => {
@@ -198,10 +195,17 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                             ));
                         }
 
-                        EVAL(list[2].clone(), &mut new_env)
+                        return EVAL(list[2].clone(), &mut new_env);
                     }
-                    _ => todo!("eval list"),
-                },
+                    _ => (),
+                }
+            }
+
+            match eval_ast(list[0].clone(), env) {
+                Ok(MalVal::Func(f, _)) => f(list[1..]
+                    .iter()
+                    .map(|item| EVAL(item.clone(), env))
+                    .collect::<Result<_, _>>()?),
                 Ok(f) => Err(MalError::InvalidType(
                     printer::pr_str(&f),
                     "function".to_string(),
@@ -227,7 +231,7 @@ fn eval_ast(ast: MalVal, env: &mut Env) -> MalResult {
     match ast {
         MalVal::Symbol(s) => env
             .get(&(*s))
-            .ok_or(MalError::NotFound(s.to_string())) // TODO: 特殊atomを返す場合を追加する
+            .ok_or(MalError::NotFound(s.to_string()))
             .map(|v| v.clone()),
         MalVal::List(l, _) => Ok(MalVal::list(
             l.iter()
