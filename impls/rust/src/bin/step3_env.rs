@@ -169,7 +169,7 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                         }
 
                         let mut new_env = Env::new(Some(env));
-                        if let MalVal::List(bindings, _) = &list[1] {
+                        if let MalVal::List(bindings, _) | MalVal::Vector(bindings, _) = &list[1] {
                             bindings
                                 .iter()
                                 .chain(std::iter::once(&MalVal::Nil)) // 奇数個の場合に対応するため
@@ -233,13 +233,8 @@ fn eval_ast(ast: MalVal, env: &mut Env) -> MalResult {
             .get(&(*s))
             .ok_or(MalError::NotFound(s.to_string()))
             .map(|v| v.clone()),
-        MalVal::List(l, _) => Ok(MalVal::list(
+        MalVal::List(l, _) | MalVal::Vector(l, _) => Ok(MalVal::list(
             l.iter()
-                .map(|item| EVAL(item.clone(), env))
-                .collect::<Result<_, _>>()?,
-        )),
-        MalVal::Vector(v, _) => Ok(MalVal::vec(
-            v.iter()
                 .map(|item| EVAL(item.clone(), env))
                 .collect::<Result<_, _>>()?,
         )),

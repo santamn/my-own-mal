@@ -229,7 +229,7 @@ impl Display for MalError {
             ),
             MalError::UncloedQuote => write!(f, "expected \", got EOF"),
             MalError::DividedByZero => write!(f, "divided by zero"),
-            MalError::NotFound(s) => write!(f, "symbol was not found: {}", s),
+            MalError::NotFound(s) => write!(f, "symbol \'{}\' not found", s),
             MalError::InvalidType(name, expected, got) => {
                 write!(f, "expected {} for {}, got {}", expected, name, got)
             }
