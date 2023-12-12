@@ -1,10 +1,10 @@
 #![feature(iterator_try_reduce)]
 
 use itertools::Itertools;
-use rust::env::Env;
-use rust::printer;
-use rust::reader;
-use rust::types::{Arity, MalError, MalResult, MalVal};
+use rusty_mal::env::Env;
+use rusty_mal::printer;
+use rusty_mal::reader;
+use rusty_mal::types::{Arity, MalError, MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::rc::Rc;
@@ -206,10 +206,10 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                     .iter()
                     .map(|item| EVAL(item.clone(), env))
                     .collect::<Result<_, _>>()?),
-                Ok(f) => Err(MalError::InvalidType(
-                    printer::pr_str(&f),
+                Ok(t) => Err(MalError::InvalidType(
+                    printer::pr_str(&t),
                     "function".to_string(),
-                    f.type_str(),
+                    t.type_str(),
                 )),
                 Err(e) => Err(e),
             }
@@ -233,7 +233,12 @@ fn eval_ast(ast: MalVal, env: &mut Env) -> MalResult {
             .get(&(*s))
             .ok_or(MalError::NotFound(s.to_string()))
             .map(|v| v.clone()),
-        MalVal::List(l, _) | MalVal::Vector(l, _) => Ok(MalVal::list(
+        MalVal::List(l, _) => Ok(MalVal::list(
+            l.iter()
+                .map(|item| EVAL(item.clone(), env))
+                .collect::<Result<_, _>>()?,
+        )),
+        MalVal::Vector(l, _) => Ok(MalVal::vec(
             l.iter()
                 .map(|item| EVAL(item.clone(), env))
                 .collect::<Result<_, _>>()?,

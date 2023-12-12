@@ -1,13 +1,13 @@
 use fnv::FnvHashMap;
-use rust::printer;
-use rust::reader;
-use rust::types::MalError;
-use rust::types::{MalResult, MalVal};
+use rusty_mal::printer;
+use rusty_mal::reader;
+use rusty_mal::types::MalError;
+use rusty_mal::types::{MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::rc::Rc;
 
-use rust::printer::pr_str;
+use rusty_mal::printer::pr_str;
 
 type ReplEnv = FnvHashMap<String, MalVal>;
 
