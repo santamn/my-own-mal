@@ -1,35 +1,36 @@
 #![feature(iterator_try_reduce)]
 
 use itertools::Itertools;
+use rust::env::Env;
 use rust::printer;
 use rust::reader;
-use rust::types::Arity;
-use rust::types::MalError;
-use rust::types::{MalResult, MalVal};
+use rust::types::{Arity, MalError, MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::rc::Rc;
 
-use rust::env::Env;
-use rust::printer::pr_str;
-
 fn main() {
     // 将来的にマクロにしたい
     let mut env = Env::new(None);
-    // TODO: try_reduceを使う
     env.set(
         "+",
         MalVal::Func(
             |args| {
-                args.iter()
-                    .try_fold(MalVal::Number(0), |acc, x| match (acc, x) {
+                let length = args.len();
+                args.into_iter()
+                    .try_reduce(|acc, x| match (acc, x) {
                         (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc + x)),
-                        _ => Err(MalError::InvalidType(
-                            pr_str(x),
+                        (z, MalVal::Number(_)) | (_, z) => Err(MalError::InvalidType(
+                            printer::pr_str(&z),
                             "number".to_string(),
-                            x.type_str(),
+                            z.type_str(),
                         )),
-                    })
+                    })?
+                    .ok_or(MalError::WrongArity(
+                        "+".to_string(),
+                        Arity(1, true),
+                        length,
+                    ))
             },
             Rc::new(MalVal::Nil),
         ),
@@ -38,16 +39,21 @@ fn main() {
         "-",
         MalVal::Func(
             |args| {
-                args.iter()
-                    .skip(1)
-                    .try_fold(args[0].clone(), |acc, x| match (acc, x) {
+                let length = args.len();
+                args.into_iter()
+                    .try_reduce(|acc, x| match (acc, x) {
                         (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc - x)),
-                        _ => Err(MalError::InvalidType(
-                            pr_str(x),
+                        (z, MalVal::Number(_)) | (_, z) => Err(MalError::InvalidType(
+                            printer::pr_str(&z),
                             "number".to_string(),
-                            x.type_str(),
+                            z.type_str(),
                         )),
-                    })
+                    })?
+                    .ok_or(MalError::WrongArity(
+                        "-".to_string(),
+                        Arity(1, true),
+                        length,
+                    ))
             },
             Rc::new(MalVal::Nil),
         ),
@@ -56,15 +62,21 @@ fn main() {
         "*",
         MalVal::Func(
             |args| {
-                args.iter()
-                    .try_fold(MalVal::Number(1), |acc, x| match (acc, x) {
+                let length = args.len();
+                args.into_iter()
+                    .try_reduce(|acc, x| match (acc, x) {
                         (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc * x)),
-                        _ => Err(MalError::InvalidType(
-                            pr_str(x),
+                        (z, MalVal::Number(_)) | (_, z) => Err(MalError::InvalidType(
+                            printer::pr_str(&z),
                             "number".to_string(),
-                            x.type_str(),
+                            z.type_str(),
                         )),
-                    })
+                    })?
+                    .ok_or(MalError::WrongArity(
+                        "*".to_string(),
+                        Arity(1, true),
+                        length,
+                    ))
             },
             Rc::new(MalVal::Nil),
         ),
@@ -75,18 +87,15 @@ fn main() {
             |args| {
                 let length = args.len();
                 args.into_iter()
-                    .try_reduce(|acc, x| match (acc, x.clone()) {
-                        (MalVal::Number(acc), MalVal::Number(x)) => {
-                            if x == 0 {
-                                Err(MalError::DividedByZero)
-                            } else {
-                                Ok(MalVal::Number(acc / x))
-                            }
-                        }
+                    .try_reduce(|acc, x| match (acc, x) {
+                        (MalVal::Number(acc), MalVal::Number(x)) => acc
+                            .checked_div(x)
+                            .map(MalVal::Number)
+                            .ok_or(MalError::DividedByZero),
                         (z, MalVal::Number(_)) | (_, z) => Err(MalError::InvalidType(
-                            pr_str(&z),
+                            printer::pr_str(&z),
                             "number".to_string(),
-                            x.type_str(),
+                            z.type_str(),
                         )),
                     })?
                     .ok_or(MalError::WrongArity(
@@ -164,7 +173,6 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
 
                         let mut new_env = Env::new(Some(env));
                         if let MalVal::List(bindings, _) = &list[1] {
-                            // TODO: try_collectとかを使ってまとめてmapにmergeしたい
                             bindings
                                 .iter()
                                 .chain(std::iter::once(&MalVal::Nil)) // 奇数個の場合に対応するため
@@ -176,7 +184,7 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                                         Ok(())
                                     } else {
                                         Err(MalError::InvalidType(
-                                            pr_str(k),
+                                            printer::pr_str(k),
                                             "symbol".to_string(),
                                             k.type_str(),
                                         ))
@@ -184,7 +192,7 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                                 })?;
                         } else {
                             return Err(MalError::InvalidType(
-                                pr_str(&list[1]),
+                                printer::pr_str(&list[1]),
                                 "list".to_string(),
                                 list[1].type_str(),
                             ));
@@ -195,7 +203,7 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                     _ => todo!("eval list"),
                 },
                 Ok(f) => Err(MalError::InvalidType(
-                    pr_str(&f),
+                    printer::pr_str(&f),
                     "function".to_string(),
                     f.type_str(),
                 )),
