@@ -9,20 +9,20 @@ pub fn pr_str(form: &MalVal) -> String {
         MalVal::String(s) => format!("\"{}\"", escape(s)),
         MalVal::Keyword(k) => format!(":{}", k),
         MalVal::Symbol(s) => s.to_string(),
-        MalVal::List(l, _) => format!("({})", l.iter().map(|e| pr_str(e)).join(" ")),
-        MalVal::Vector(v, _) => format!("[{}]", v.iter().map(|e| pr_str(e)).join(" ")),
+        MalVal::List(l, _) => format!("({})", l.iter().map(pr_str).join(" ")),
+        MalVal::Vector(v, _) => format!("[{}]", v.iter().map(pr_str).join(" ")),
         MalVal::HashMap(m, _) => format!(
             "{{{}}}",
             m.iter()
                 .map(|(k, v)| format!("{} {}", pr_str(k), pr_str(v)))
                 .join(" ")
         ),
-        MalVal::HashSet(s, _) => format!("#{{{}}}", s.iter().map(|e| pr_str(e)).join(" ")),
+        MalVal::HashSet(s, _) => format!("#{{{}}}", s.iter().map(pr_str).join(" ")),
         MalVal::Func(_, _) => String::from("#<function>"),
     }
 }
 
-fn escape(s: &String) -> String {
+fn escape(s: &str) -> String {
     s.chars()
         .map(|c| match c {
             '"' => [Some('\\'), Some('\"')],

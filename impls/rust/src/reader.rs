@@ -37,7 +37,7 @@ fn tokenize(input: String) -> Vec<String> {
     regex!(r#"[\s,]*(~@|#\{|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"#)
         .captures_iter(&input)
         .map(|cap| cap[1].to_string()) // cap[0]はマッチした文字列全体, cap[1]はグループ化した文字列=空白以外の部分
-        .filter(|token| !token.starts_with(";")) // コメント行を除外
+        .filter(|token| !token.starts_with(';')) // コメント行を除外
         .collect()
 }
 
@@ -148,18 +148,18 @@ fn read_atom(reader: &mut Reader) -> MalResult {
         "nil" => Ok(MalVal::Nil),
         token => {
             if let Ok(b) = token.parse::<bool>() {
-                return Ok(MalVal::Bool(b));
+                Ok(MalVal::Bool(b))
             } else if let Ok(n) = token.parse::<i64>() {
-                return Ok(MalVal::Number(n));
-            } else if token.starts_with("\"") {
+                Ok(MalVal::Number(n))
+            } else if token.starts_with('\"') {
                 if token.len() >= 2 && regex!(r#"[^\\](\\\\)*"$"#).is_match(token) {
-                    // 末尾がエスケープされていない"で終わる
-                    return Ok(MalVal::string(unescape(&token[1..token.len() - 1])));
+                    // 末尾がエスケープされていない"で終わる場合 => 文字列リテラル
+                    Ok(MalVal::string(unescape(&token[1..token.len() - 1])))
                 } else {
                     Err(MalError::UncloedQuote)
                 }
-            } else if token.starts_with(":") {
-                Ok(MalVal::keyword(&token[1..]))
+            } else if let Some(keyword) = token.strip_prefix(':') {
+                Ok(MalVal::keyword(keyword))
             } else {
                 Ok(MalVal::symbol(token))
             }

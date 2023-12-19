@@ -148,7 +148,7 @@ impl Hash for MalVal {
                 state.write_usize(m.len());
                 state.write_u64(
                     m.iter()
-                        .map(|e| hash_code(m.hasher(), &e))
+                        .map(|e| m.hasher().hash_one(e))
                         .reduce(|a, b| a ^ b)
                         .unwrap_or(4),
                 );
@@ -157,7 +157,7 @@ impl Hash for MalVal {
                 state.write_usize(s.len());
                 state.write_u64(
                     s.iter()
-                        .map(|e| hash_code(s.hasher(), e))
+                        .map(|e| s.hasher().hash_one(e))
                         .reduce(|a, b| a ^ b)
                         .unwrap_or(5),
                 );
@@ -165,16 +165,6 @@ impl Hash for MalVal {
             MalVal::Func(f, _) => state.write_usize(f as *const _ as usize),
         }
     }
-}
-
-fn hash_code<B, T>(b: &B, t: &T) -> u64
-where
-    B: BuildHasher,
-    T: Hash,
-{
-    let mut hasher = b.build_hasher();
-    t.hash(&mut hasher);
-    hasher.finish()
 }
 
 impl Display for MalVal {

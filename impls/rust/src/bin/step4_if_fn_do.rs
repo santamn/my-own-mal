@@ -197,7 +197,7 @@ fn eval_ast(ast: MalVal, env: &mut Env) -> MalResult {
     }
 }
 
-fn special_def(list: &Vec<MalVal>, env: &mut Env) -> MalResult {
+fn special_def(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() != 3 {
         return Err(MalError::WrongArity(
             "def!".to_string(),
@@ -219,7 +219,7 @@ fn special_def(list: &Vec<MalVal>, env: &mut Env) -> MalResult {
     }
 }
 
-fn special_let(list: &Vec<MalVal>, env: &mut Env) -> MalResult {
+fn special_let(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() != 3 {
         return Err(MalError::WrongArity(
             "let*".to_string(),
@@ -258,7 +258,7 @@ fn special_let(list: &Vec<MalVal>, env: &mut Env) -> MalResult {
     EVAL(list[2].clone(), &mut new_env)
 }
 
-fn special_do(list: &Vec<MalVal>, env: &mut Env) -> MalResult {
+fn special_do(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() < 2 {
         return Err(MalError::WrongArity(
             "do".to_string(),
@@ -274,7 +274,7 @@ fn special_do(list: &Vec<MalVal>, env: &mut Env) -> MalResult {
         .map(|v| v.unwrap())
 }
 
-fn special_if(list: &Vec<MalVal>, env: &mut Env) -> MalResult {
+fn special_if(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() < 3 || list.len() > 4 {
         return Err(MalError::WrongArity(
             "if".to_string(),
