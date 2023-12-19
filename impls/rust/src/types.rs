@@ -5,6 +5,7 @@ use std::fmt::{Formatter, Result as FmtResult};
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::rc::Rc;
 
+use crate::env::Env;
 use crate::printer::pr_str;
 
 #[derive(Debug, Clone)]
@@ -20,6 +21,13 @@ pub enum MalVal<S = FnvBuildHasher> {
     HashMap(Rc<HashMap<MalVal, MalVal, S>>, Rc<MalVal>),
     HashSet(Rc<HashSet<MalVal, S>>, Rc<MalVal>),
     Func(fn(Vec<MalVal>) -> MalResult, Rc<MalVal>),
+}
+
+#[derive(Debug, Clone)]
+pub struct Closure<S = FnvBuildHasher> {
+    pub params: MalVal<S>,
+    pub body: MalVal<S>,
+    pub env: Env,
 }
 
 impl<S> MalVal<S>
@@ -182,6 +190,7 @@ pub enum Paren {
     Curly,  // {}
 }
 
+// TODO: 2番目をenumにする
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Arity(pub usize, pub bool);
 

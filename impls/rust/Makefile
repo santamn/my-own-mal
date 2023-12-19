@@ -12,6 +12,9 @@ step2:
 step3:
 	cargo build --release --bin step3_env
 
+step4:
+	cargo build --release --bin step4_if_fn_do
+
 build:
 	cargo build --release
 

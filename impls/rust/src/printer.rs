@@ -18,7 +18,7 @@ pub fn pr_str(form: &MalVal) -> String {
                 .join(" ")
         ),
         MalVal::HashSet(s, _) => format!("#{{{}}}", s.iter().map(|e| pr_str(e)).join(" ")),
-        MalVal::Func(_, _) => String::from("<function>"),
+        MalVal::Func(_, _) => String::from("#<function>"),
     }
 }
 
