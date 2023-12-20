@@ -109,6 +109,7 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                     "let*" => return special_let(list, env),
                     "do" => return special_do(list, env),
                     "if" => return special_if(list, env),
+                    "fn*" => return special_fn(list, env),
                     _ => {}
                 };
             }
