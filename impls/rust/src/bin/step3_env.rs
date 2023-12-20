@@ -4,7 +4,7 @@ use itertools::Itertools;
 use rusty_mal::env::Env;
 use rusty_mal::printer;
 use rusty_mal::reader;
-use rusty_mal::types::{Arity, MalError, MalResult, MalVal};
+use rusty_mal::types::{Ariity, MalError, MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::rc::Rc;
@@ -28,7 +28,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "+".to_string(),
-                        Arity(1, true),
+                        Ariity(1, true),
                         length,
                     ))
             },
@@ -51,7 +51,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "-".to_string(),
-                        Arity(1, true),
+                        Ariity(1, true),
                         length,
                     ))
             },
@@ -74,7 +74,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "*".to_string(),
-                        Arity(1, true),
+                        Ariity(1, true),
                         length,
                     ))
             },
@@ -100,7 +100,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "/".to_string(),
-                        Arity(1, true),
+                        Ariity(1, true),
                         length,
                     ))
             },
@@ -142,7 +142,7 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                         if list.len() != 3 {
                             return Err(MalError::WrongArity(
                                 "def!".to_string(),
-                                Arity(2, false),
+                                Ariity(2, false),
                                 list.len() - 1,
                             ));
                         }
@@ -163,7 +163,7 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                         if list.len() != 3 {
                             return Err(MalError::WrongArity(
                                 "let*".to_string(),
-                                Arity(2, false),
+                                Ariity(2, false),
                                 list.len() - 1,
                             ));
                         }

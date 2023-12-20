@@ -4,7 +4,7 @@ use itertools::Itertools;
 use rusty_mal::env::Env;
 use rusty_mal::printer;
 use rusty_mal::reader;
-use rusty_mal::types::{Arity, MalError, MalResult, MalVal};
+use rusty_mal::types::{Ariity, MalError, MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::rc::Rc;
@@ -28,7 +28,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "+".to_string(),
-                        Arity(1, true),
+                        Ariity(1, true),
                         length,
                     ))
             },
@@ -51,7 +51,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "-".to_string(),
-                        Arity(1, true),
+                        Ariity(1, true),
                         length,
                     ))
             },
@@ -74,7 +74,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "*".to_string(),
-                        Arity(1, true),
+                        Ariity(1, true),
                         length,
                     ))
             },
@@ -100,7 +100,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "/".to_string(),
-                        Arity(1, true),
+                        Ariity(1, true),
                         length,
                     ))
             },
@@ -128,11 +128,11 @@ fn READ(input: String) -> MalResult {
 }
 
 #[allow(non_snake_case)]
-fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
+fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
     match input {
         MalVal::List(ref list, _) => {
             if list.is_empty() {
-                return Ok(input);
+                return Ok(input.clone());
             }
 
             // 特殊フォームの処理
@@ -146,10 +146,10 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
                 };
             }
 
-            match eval_ast(list[0].clone(), env) {
+            match eval_ast(&list[0], env) {
                 Ok(MalVal::Func(f, _)) => f(list[1..]
                     .iter()
-                    .map(|item| EVAL(item.clone(), env))
+                    .map(|item| EVAL(item, env))
                     .collect::<Result<_, _>>()?),
                 Ok(t) => Err(MalError::InvalidType(
                     printer::pr_str(&t),
@@ -164,36 +164,36 @@ fn EVAL(input: MalVal, env: &mut Env) -> MalResult {
 }
 
 #[allow(non_snake_case)]
-fn PRINT(input: MalVal) -> String {
-    printer::pr_str(&input)
+fn PRINT(input: &MalVal) -> String {
+    printer::pr_str(input)
 }
 
 fn rep(input: String, env: &mut Env) -> Result<String, MalError> {
-    Ok(PRINT(EVAL(READ(input)?, env)?))
+    Ok(PRINT(&EVAL(&READ(input)?, env)?))
 }
 
-fn eval_ast(ast: MalVal, env: &mut Env) -> MalResult {
+fn eval_ast(ast: &MalVal, env: &mut Env) -> MalResult {
     match ast {
         MalVal::Symbol(s) => env
-            .get(&(*s))
+            .get(s.as_ref())
             .ok_or(MalError::NotFound(s.to_string()))
             .map(|v| v.clone()),
         MalVal::List(l, _) => Ok(MalVal::list(
             l.iter()
-                .map(|item| EVAL(item.clone(), env))
+                .map(|item| EVAL(item, env))
                 .collect::<Result<_, _>>()?,
         )),
         MalVal::Vector(l, _) => Ok(MalVal::vec(
             l.iter()
-                .map(|item| EVAL(item.clone(), env))
+                .map(|item| EVAL(item, env))
                 .collect::<Result<_, _>>()?,
         )),
         MalVal::HashMap(m, _) => Ok(MalVal::hashmap(
             m.iter()
-                .map(|(k, v)| Ok((k.clone(), EVAL(v.clone(), env)?)))
+                .map(|(k, v)| Ok((k.clone(), EVAL(v, env)?)))
                 .collect::<Result<_, _>>()?,
         )),
-        _ => Ok(ast),
+        _ => Ok(ast.clone()),
     }
 }
 
@@ -201,13 +201,13 @@ fn special_def(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() != 3 {
         return Err(MalError::WrongArity(
             "def!".to_string(),
-            Arity(2, false),
+            Ariity(2, false),
             list.len() - 1,
         ));
     }
 
     if let MalVal::Symbol(s) = &list[1] {
-        let val = EVAL(list[2].clone(), env)?;
+        let val = EVAL(&list[2], env)?;
         env.set(s.to_string(), val.clone());
         Ok(val)
     } else {
@@ -223,7 +223,7 @@ fn special_let(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() != 3 {
         return Err(MalError::WrongArity(
             "let*".to_string(),
-            Arity(2, false),
+            Ariity(2, false),
             list.len() - 1,
         ));
     }
@@ -236,7 +236,7 @@ fn special_let(list: &[MalVal], env: &mut Env) -> MalResult {
             .tuples()
             .try_for_each(|(k, v)| {
                 if let MalVal::Symbol(s) = k {
-                    let val = EVAL(v.clone(), &mut new_env)?;
+                    let val = EVAL(v, &mut new_env)?;
                     new_env.set(s.to_string(), val);
                     Ok(())
                 } else {
@@ -255,14 +255,14 @@ fn special_let(list: &[MalVal], env: &mut Env) -> MalResult {
         ));
     }
 
-    EVAL(list[2].clone(), &mut new_env)
+    EVAL(&list[2], &mut new_env)
 }
 
 fn special_do(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() < 2 {
         return Err(MalError::WrongArity(
             "do".to_string(),
-            Arity(1, true),
+            Ariity(1, true),
             list.len() - 1,
         ));
     }
@@ -270,7 +270,7 @@ fn special_do(list: &[MalVal], env: &mut Env) -> MalResult {
     list[1..]
         .iter()
         .cloned()
-        .try_reduce(|_, item| EVAL(item, env))
+        .try_reduce(|_, ref item| EVAL(item, env))
         .map(|v| v.unwrap())
 }
 
@@ -278,19 +278,19 @@ fn special_if(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() < 3 || list.len() > 4 {
         return Err(MalError::WrongArity(
             "if".to_string(),
-            Arity(3, false),
+            Ariity(3, false),
             list.len() - 1,
         ));
     }
 
-    match EVAL(list[1].clone(), env)? {
+    match EVAL(&list[1], env)? {
         MalVal::Bool(false) | MalVal::Nil => {
             if list.len() == 4 {
-                EVAL(list[3].clone(), env)
+                EVAL(&list[3], env)
             } else {
                 Ok(MalVal::Nil)
             }
         }
-        _ => EVAL(list[2].clone(), env),
+        _ => EVAL(&list[2], env),
     }
 }

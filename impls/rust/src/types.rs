@@ -25,7 +25,7 @@ pub enum MalVal<S = FnvBuildHasher> {
 
 #[derive(Debug, Clone)]
 pub struct Closure<S = FnvBuildHasher> {
-    pub params: MalVal<S>,
+    pub params: Vec<String>,
     pub body: MalVal<S>,
     pub env: Env,
 }
@@ -182,9 +182,16 @@ pub enum Paren {
 
 // TODO: 2番目をenumにする
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Arity(pub usize, pub bool);
+pub struct Ariity(pub usize, pub bool);
 
-impl Display for Arity {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Arity {
+    Fixed(usize),
+    Variadic(usize),
+    JustOrOneLess(usize),
+}
+
+impl Display for Ariity {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(
             f,
@@ -210,7 +217,7 @@ pub enum MalError {
     DividedByZero,
     NotFound(String),
     InvalidType(String, String, String),
-    WrongArity(String, Arity, usize),
+    WrongArity(String, Ariity, usize),
 }
 
 impl Display for MalError {
