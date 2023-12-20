@@ -20,7 +20,8 @@ pub enum MalVal<S = FnvBuildHasher> {
     Vector(Rc<Vec<MalVal>>, Rc<MalVal>),
     HashMap(Rc<HashMap<MalVal, MalVal, S>>, Rc<MalVal>),
     HashSet(Rc<HashSet<MalVal, S>>, Rc<MalVal>),
-    Func(fn(Vec<MalVal>) -> MalResult, Rc<MalVal>),
+    BuiltinFn(fn(Vec<MalVal>) -> MalResult),
+    Func(Rc<Closure<S>>, Rc<MalVal>),
 }
 
 #[derive(Debug, Clone)]
@@ -78,12 +79,12 @@ where
         MalVal::HashSet(Rc::new(hashset), Rc::new(meta))
     }
 
-    pub fn func(f: fn(Vec<MalVal>) -> MalResult) -> Self {
-        MalVal::func_with_meta(f, MalVal::Nil)
+    pub fn func_with_meta(closure: Closure<S>, meta: MalVal) -> Self {
+        MalVal::Func(Rc::new(closure), Rc::new(meta))
     }
 
-    pub fn func_with_meta(f: fn(Vec<MalVal>) -> MalResult, meta: MalVal) -> Self {
-        MalVal::Func(f, Rc::new(meta))
+    pub fn func(closure: Closure<S>) -> Self {
+        MalVal::func_with_meta(closure, MalVal::Nil)
     }
 
     pub fn type_str(&self) -> String {
@@ -98,6 +99,7 @@ where
             MalVal::Vector(_, _) => "vector".to_string(),
             MalVal::HashMap(_, _) => "hash-map".to_string(),
             MalVal::HashSet(_, _) => "hash-set".to_string(),
+            MalVal::BuiltinFn(_) => "function".to_string(),
             MalVal::Func(_, _) => "function".to_string(),
         }
     }
@@ -116,6 +118,7 @@ impl PartialEq for MalVal {
             (MalVal::Vector(a, _), MalVal::Vector(b, _)) => a == b,
             (MalVal::HashMap(a, _), MalVal::HashMap(b, _)) => a == b,
             (MalVal::HashSet(a, _), MalVal::HashSet(b, _)) => a == b,
+            (MalVal::BuiltinFn(a), MalVal::BuiltinFn(b)) => a as *const _ == b as *const _,
             _ => false,
         }
     }
@@ -162,7 +165,12 @@ impl Hash for MalVal {
                         .unwrap_or(5),
                 );
             }
-            MalVal::Func(f, _) => state.write_usize(f as *const _ as usize),
+            MalVal::BuiltinFn(f) => state.write_usize(f as *const _ as usize),
+            MalVal::Func(f, _) => {
+                state.write_usize(f as *const _ as usize);
+                f.params.hash(state);
+                f.body.hash(state);
+            }
         }
     }
 }
@@ -194,8 +202,8 @@ impl Display for Arity {
             "{}",
             match self {
                 Arity::Fixed(n) => n.to_string(),
-                Arity::Variadic(n) => format!("{} or {}", n - 1, n),
-                Arity::JustOrOneLess(n) => format!("{}+", n),
+                Arity::Variadic(n) => format!("{}+", n),
+                Arity::JustOrOneLess(n) => format!("{} or {}", n - 1, n),
             }
         )
     }

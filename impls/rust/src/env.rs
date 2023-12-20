@@ -24,7 +24,9 @@ impl Env {
         })))
     }
 
+    // 関数の仮引数と実引数を受け取り、新たな環境を作成する
     // '&'以降で可変長引数を受け取る
+    // Constraints: '&'が1個以下
     pub fn with_bind(outer: Option<&Env>, mut params: Vec<String>, mut args: Vec<MalVal>) -> Self {
         if let Some(index) = params.iter().position(|p| p == "&")
             && args.len() > index

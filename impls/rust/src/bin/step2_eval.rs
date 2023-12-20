@@ -5,7 +5,6 @@ use rusty_mal::types::MalError;
 use rusty_mal::types::{MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
-use std::rc::Rc;
 
 use rusty_mal::printer::pr_str;
 
@@ -15,79 +14,67 @@ fn main() {
     let mut env = ReplEnv::default();
     env.insert(
         "+".to_string(),
-        MalVal::Func(
-            |args| {
-                args.iter()
-                    .try_fold(MalVal::Number(0), |acc, x| match (acc, x) {
-                        (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc + x)),
-                        _ => Err(MalError::InvalidType(
-                            pr_str(x),
-                            "number".to_string(),
-                            x.type_str(),
-                        )),
-                    })
-            },
-            Rc::new(MalVal::Nil),
-        ),
+        MalVal::BuiltinFn(|args| {
+            args.iter()
+                .try_fold(MalVal::Number(0), |acc, x| match (acc, x) {
+                    (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc + x)),
+                    _ => Err(MalError::InvalidType(
+                        pr_str(x),
+                        "number".to_string(),
+                        x.type_str(),
+                    )),
+                })
+        }),
     );
     env.insert(
         "-".to_string(),
-        MalVal::Func(
-            |args| {
-                args.iter()
-                    .skip(1)
-                    .try_fold(args[0].clone(), |acc, x| match (acc, x) {
-                        (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc - x)),
-                        _ => Err(MalError::InvalidType(
-                            pr_str(x),
-                            "number".to_string(),
-                            x.type_str(),
-                        )),
-                    })
-            },
-            Rc::new(MalVal::Nil),
-        ),
+        MalVal::BuiltinFn(|args| {
+            args.iter()
+                .skip(1)
+                .try_fold(args[0].clone(), |acc, x| match (acc, x) {
+                    (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc - x)),
+                    _ => Err(MalError::InvalidType(
+                        pr_str(x),
+                        "number".to_string(),
+                        x.type_str(),
+                    )),
+                })
+        }),
     );
     env.insert(
         "*".to_string(),
-        MalVal::Func(
-            |args| {
-                args.iter()
-                    .try_fold(MalVal::Number(1), |acc, x| match (acc, x) {
-                        (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc * x)),
-                        _ => Err(MalError::InvalidType(
-                            pr_str(x),
-                            "number".to_string(),
-                            x.type_str(),
-                        )),
-                    })
-            },
-            Rc::new(MalVal::Nil),
-        ),
+        MalVal::BuiltinFn(|args| {
+            args.iter()
+                .try_fold(MalVal::Number(1), |acc, x| match (acc, x) {
+                    (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc * x)),
+                    _ => Err(MalError::InvalidType(
+                        pr_str(x),
+                        "number".to_string(),
+                        x.type_str(),
+                    )),
+                })
+        }),
     );
     env.insert(
         "/".to_string(),
-        MalVal::Func(
-            |args| {
-                args.iter()
-                    .skip(1)
-                    .try_fold(args[0].clone(), |acc, x| match (acc, x) {
-                        (MalVal::Number(acc), MalVal::Number(x)) => {
-                            if *x == 0 {
-                                Err(MalError::DividedByZero)
-                            } else {
-                                Ok(MalVal::Number(acc / x))
-                            }
+        MalVal::BuiltinFn(|args| {
+            args.iter()
+                .skip(1)
+                .try_fold(args[0].clone(), |acc, x| match (acc, x) {
+                    (MalVal::Number(acc), MalVal::Number(x)) => {
+                        if *x == 0 {
+                            Err(MalError::DividedByZero)
+                        } else {
+                            Ok(MalVal::Number(acc / x))
                         }
-                        _ => Err(MalError::InvalidType(
-                            pr_str(x),
-                            "number".to_string(),
-                            x.type_str(),
-                        )),
-                    })
-            },
-            Rc::new(MalVal::Nil),
-        ),
+                    }
+                    _ => Err(MalError::InvalidType(
+                        pr_str(x),
+                        "number".to_string(),
+                        x.type_str(),
+                    )),
+                })
+        }),
     );
 
     loop {
@@ -118,7 +105,7 @@ fn EVAL(input: MalVal, env: &ReplEnv) -> MalResult {
             }
 
             match eval_ast(list[0].clone(), env) {
-                Ok(MalVal::Func(f, _)) => f(list[1..]
+                Ok(MalVal::BuiltinFn(f)) => f(list[1..]
                     .iter()
                     .map(|item| EVAL(item.clone(), env))
                     .collect::<Result<_, _>>()?),
