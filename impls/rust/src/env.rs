@@ -25,19 +25,20 @@ impl Env {
     }
 
     // 関数の仮引数と実引数を受け取り、新たな環境を作成する
-    // '&'以降で可変長引数を受け取る
-    // Constraints: '&'が1個以下
-    pub fn with_bind(outer: Option<&Env>, mut params: Vec<String>, mut args: Vec<MalVal>) -> Self {
-        if let Some(index) = params.iter().position(|p| p == "&")
-            && args.len() > index
+    pub fn with_bind(
+        outer: Option<&Env>,
+        params: Vec<String>,
+        variadic: Option<String>, // 可変長引数
+        mut args: Vec<MalVal>,
+    ) -> Self {
+        if let Some(var) = variadic
+            && args.len() > params.len()
         {
-            let rest_args = args.split_off(index);
-            params.remove(index);
-
+            let rest_args = args.split_off(params.len());
             Env(Rc::new(RefCell::new(EnvEntity {
                 outer: outer.cloned(),
                 data: iter::zip(
-                    params,
+                    params.into_iter().chain(iter::once(var)),
                     args.into_iter().chain(iter::once(MalVal::vec(rest_args))),
                 )
                 .collect(),

@@ -118,6 +118,8 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                     .iter()
                     .map(|item| EVAL(item, env))
                     .collect::<Result<_, _>>()?),
+                // TODO: 実装
+                Ok(MalVal::Func(f, _)) => todo!("user defined function"),
                 Ok(t) => Err(MalError::InvalidType(
                     printer::pr_str(&t),
                     "function".to_string(),
@@ -273,20 +275,37 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
 
     if let MalVal::List(params, _) | MalVal::Vector(params, _) = &list[1] {
         Ok(MalVal::func(Closure {
-            // TODO: '&'が2つ以上ある場合はエラーにする
             params: {
-                params
-                    .iter()
-                    .map(|item| match item {
-                        MalVal::Symbol(s) => Ok(s.to_string()),
-                        _ => Err(MalError::InvalidType(
+                let mut vec = Vec::with_capacity(params.len());
+                let mut variadic_param: Option<String> = None;
+                let mut ampersand_found = false;
+                params.iter().try_for_each(|item| {
+                    if let MalVal::Symbol(s) = item {
+                        if s.as_str() == "&" {
+                            if ampersand_found {
+                                return Err(MalError::InvalidSyntax("duplicated '&'".to_string()));
+                            }
+                            ampersand_found = true;
+                        } else if ampersand_found {
+                            if variadic_param.is_some() {
+                                return Err(MalError::InvalidSyntax(
+                                    "duplicated variadic parameter".to_string(),
+                                ));
+                            }
+                            variadic_param = Some(s.to_string());
+                        } else {
+                            vec.push(s.to_string());
+                        }
+                        Ok(())
+                    } else {
+                        Err(MalError::InvalidType(
                             printer::pr_str(item),
                             "symbol".to_string(),
                             item.type_str(),
-                        )),
-                    })
-                    // try_foldを使う
-                    .collect::<Result<_, _>>()?
+                        ))
+                    }
+                })?;
+                (vec, variadic_param)
             },
             body: list[2].clone(),
             env: env.clone(),

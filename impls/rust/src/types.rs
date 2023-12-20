@@ -26,7 +26,7 @@ pub enum MalVal<S = FnvBuildHasher> {
 
 #[derive(Debug, Clone)]
 pub struct Closure<S = FnvBuildHasher> {
-    pub params: Vec<String>,
+    pub params: (Vec<String>, Option<String>),
     pub body: MalVal<S>,
     pub env: Env,
 }
@@ -119,7 +119,7 @@ impl PartialEq for MalVal {
             (MalVal::HashMap(a, _), MalVal::HashMap(b, _)) => a == b,
             (MalVal::HashSet(a, _), MalVal::HashSet(b, _)) => a == b,
             (MalVal::BuiltinFn(a), MalVal::BuiltinFn(b)) => a as *const _ == b as *const _,
-            _ => false,
+            _ => false, // Func同士は常にfalse
         }
     }
 }
@@ -222,6 +222,7 @@ pub enum MalError {
     NotFound(String),
     InvalidType(String, String, String),
     WrongArity(String, Arity, usize),
+    InvalidSyntax(String),
 }
 
 impl Display for MalError {
@@ -248,6 +249,7 @@ impl Display for MalError {
                 "wrong number of arguments for {}: expected {}, got {}",
                 name, expected, got
             ),
+            MalError::InvalidSyntax(s) => write!(f, "invalid syntax: {}", s),
         }
     }
 }
