@@ -180,10 +180,6 @@ pub enum Paren {
     Curly,  // {}
 }
 
-// TODO: 2番目をenumにする
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Ariity(pub usize, pub bool);
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Arity {
     Fixed(usize),
@@ -191,15 +187,15 @@ pub enum Arity {
     JustOrOneLess(usize),
 }
 
-impl Display for Ariity {
+impl Display for Arity {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(
             f,
             "{}",
-            if self.1 {
-                format!("{}+", self.0)
-            } else {
-                format!("{}", self.0)
+            match self {
+                Arity::Fixed(n) => n.to_string(),
+                Arity::Variadic(n) => format!("{} or {}", n - 1, n),
+                Arity::JustOrOneLess(n) => format!("{}+", n),
             }
         )
     }
@@ -217,7 +213,7 @@ pub enum MalError {
     DividedByZero,
     NotFound(String),
     InvalidType(String, String, String),
-    WrongArity(String, Ariity, usize),
+    WrongArity(String, Arity, usize),
 }
 
 impl Display for MalError {

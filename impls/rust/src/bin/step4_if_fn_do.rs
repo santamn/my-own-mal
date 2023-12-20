@@ -4,7 +4,7 @@ use itertools::Itertools;
 use rusty_mal::env::Env;
 use rusty_mal::printer;
 use rusty_mal::reader;
-use rusty_mal::types::{Ariity, MalError, MalResult, MalVal};
+use rusty_mal::types::{Arity, MalError, MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::rc::Rc;
@@ -28,7 +28,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "+".to_string(),
-                        Ariity(1, true),
+                        Arity::Variadic(1),
                         length,
                     ))
             },
@@ -51,7 +51,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "-".to_string(),
-                        Ariity(1, true),
+                        Arity::Variadic(1),
                         length,
                     ))
             },
@@ -74,7 +74,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "*".to_string(),
-                        Ariity(1, true),
+                        Arity::Variadic(1),
                         length,
                     ))
             },
@@ -100,7 +100,7 @@ fn main() {
                     })?
                     .ok_or(MalError::WrongArity(
                         "/".to_string(),
-                        Ariity(1, true),
+                        Arity::Variadic(1),
                         length,
                     ))
             },
@@ -201,7 +201,7 @@ fn special_def(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() != 3 {
         return Err(MalError::WrongArity(
             "def!".to_string(),
-            Ariity(2, false),
+            Arity::Fixed(2),
             list.len() - 1,
         ));
     }
@@ -223,7 +223,7 @@ fn special_let(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() != 3 {
         return Err(MalError::WrongArity(
             "let*".to_string(),
-            Ariity(2, false),
+            Arity::Fixed(2),
             list.len() - 1,
         ));
     }
@@ -262,7 +262,7 @@ fn special_do(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() < 2 {
         return Err(MalError::WrongArity(
             "do".to_string(),
-            Ariity(1, true),
+            Arity::Variadic(1),
             list.len() - 1,
         ));
     }
@@ -278,7 +278,7 @@ fn special_if(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() < 3 || list.len() > 4 {
         return Err(MalError::WrongArity(
             "if".to_string(),
-            Ariity(3, false),
+            Arity::JustOrOneLess(4),
             list.len() - 1,
         ));
     }
