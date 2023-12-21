@@ -280,6 +280,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
                 let mut vec = Vec::with_capacity(params.len());
                 let mut variadic_param: Option<String> = None;
                 let mut ampersand_found = false;
+                // TODO: try_rfoldを使う
                 params.iter().try_for_each(|item| {
                     if let MalVal::Symbol(s) = item {
                         if s.as_str() == "&" {
