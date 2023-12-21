@@ -33,10 +33,9 @@ pub struct Closure<S = FnvBuildHasher> {
 
 pub struct Clojure<I, S>
 where
-    I: IntoIterator<Item = String>, // MalValにこのジェネリックスが伝播してしまう
-    S: BuildHasher + Clone,
+    I: IntoIterator<Item = String> + ExactSizeIterator, // MalValにこのジェネリックスが伝播してしまう
 {
-    pub params: (I, Option<String>, usize),
+    pub params: (I, Option<String>),
     pub body: MalVal<S>,
     pub env: Env,
 }

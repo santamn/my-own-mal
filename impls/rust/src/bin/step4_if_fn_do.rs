@@ -277,37 +277,31 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
     if let MalVal::List(params, _) | MalVal::Vector(params, _) = &list[1] {
         Ok(MalVal::func(Closure {
             params: {
-                let mut vec = Vec::with_capacity(params.len());
-                let mut variadic_param: Option<String> = None;
-                let mut ampersand_found = false;
-                // TODO: try_rfoldを使う
-                params.iter().try_for_each(|item| {
-                    if let MalVal::Symbol(s) = item {
-                        if s.as_str() == "&" {
-                            if ampersand_found {
-                                return Err(MalError::InvalidSyntax("duplicated '&'".to_string()));
-                            }
-                            ampersand_found = true;
-                        } else if ampersand_found {
-                            if variadic_param.is_some() {
-                                return Err(MalError::InvalidSyntax(
-                                    "duplicated variadic parameter".to_string(),
-                                ));
-                            }
-                            variadic_param = Some(s.to_string());
-                        } else {
-                            vec.push(s.to_string());
+                let len = params.len();
+                let (vec, v) = params.windows(2).rev().enumerate().try_fold(
+                    (Vec::with_capacity(len), None),
+                    |(mut vec, v), (i, w)| match (i, w[0].clone(), w[1].clone()) {
+                        (0, MalVal::Symbol(s), MalVal::Symbol(t)) if s.as_str() == "&" => {
+                            Ok((vec, Some(t.to_string())))
                         }
-                        Ok(())
-                    } else {
-                        Err(MalError::InvalidType(
-                            printer::pr_str(item),
+                        (_, MalVal::Symbol(s), MalVal::Symbol(_)) if s.as_str() == "&" => Err(
+                            MalError::InvalidSyntax("'&' in incorrect position".to_string()),
+                        ),
+                        (_, MalVal::Symbol(s), MalVal::Symbol(_)) => Ok((
+                            {
+                                vec.push(s.to_string());
+                                vec
+                            },
+                            v,
+                        )),
+                        (_, x, MalVal::Symbol(_)) | (_, _, x) => Err(MalError::InvalidType(
+                            printer::pr_str(&x),
                             "symbol".to_string(),
-                            item.type_str(),
-                        ))
-                    }
-                })?;
-                (vec, variadic_param)
+                            x.type_str(),
+                        )),
+                    },
+                )?;
+                (vec, v)
             },
             body: list[2].clone(),
             env: env.clone(),
