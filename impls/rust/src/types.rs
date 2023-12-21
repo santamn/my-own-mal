@@ -128,7 +128,7 @@ impl PartialEq for MalVal {
             (MalVal::Vector(a, _), MalVal::Vector(b, _)) => a == b,
             (MalVal::HashMap(a, _), MalVal::HashMap(b, _)) => a == b,
             (MalVal::HashSet(a, _), MalVal::HashSet(b, _)) => a == b,
-            (MalVal::BuiltinFn(a), MalVal::BuiltinFn(b)) => a as *const _ == b as *const _,
+            (MalVal::BuiltinFn(a), MalVal::BuiltinFn(b)) => a == b,
             _ => false, // Func同士は常にfalse
         }
     }

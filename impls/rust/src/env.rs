@@ -25,22 +25,27 @@ impl Env {
     }
 
     // 関数の仮引数と実引数を受け取り、新たな環境を作成する
-    // TODO: paramsとargsをIteratorで受け取る
-    pub fn with_bind(
+    pub fn with_bind<I, J>(
         outer: Option<&Env>,
-        params: Vec<String>,
+        params: I,
         variadic: Option<String>, // 可変長引数
-        mut args: Vec<MalVal>,
-    ) -> Self {
+        args: J,
+    ) -> Self
+    where
+        I: IntoIterator<Item = String> + ExactSizeIterator,
+        J: Iterator<Item = MalVal> + ExactSizeIterator + Clone,
+    {
         if let Some(var) = variadic
             && args.len() > params.len()
         {
-            let rest_args = args.split_off(params.len());
+            let len = params.len();
             Env(Rc::new(RefCell::new(EnvEntity {
                 outer: outer.cloned(),
                 data: iter::zip(
                     params.into_iter().chain(iter::once(var)),
-                    args.into_iter().chain(iter::once(MalVal::vec(rest_args))),
+                    args.clone()
+                        .take(len)
+                        .chain(iter::once(MalVal::vec(args.skip(len).collect()))),
                 )
                 .collect(),
             })))

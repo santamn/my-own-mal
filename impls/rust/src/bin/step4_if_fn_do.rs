@@ -120,7 +120,7 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                     .map(|item| EVAL(item, env))
                     .collect::<Result<_, _>>()?),
                 // TODO: 実装
-                Ok(MalVal::Func(f, _)) => todo!("user defined function"),
+                Ok(MalVal::Func(_f, _)) => todo!("user defined function"),
                 Ok(t) => Err(MalError::InvalidType(
                     printer::pr_str(&t),
                     "function".to_string(),
