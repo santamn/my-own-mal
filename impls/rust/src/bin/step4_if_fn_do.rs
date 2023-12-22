@@ -282,6 +282,18 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
                     (Vec::with_capacity(len), None),
                     |(mut vec, v), (i, w)| match (i, w[0].clone(), w[1].clone()) {
                         (0, MalVal::Symbol(s), MalVal::Symbol(t))
+                            if s.as_str() != "&" && t.as_str() != "&" =>
+                        {
+                            Ok((
+                                {
+                                    vec.push(t.to_string());
+                                    vec.push(s.to_string());
+                                    vec
+                                },
+                                v,
+                            ))
+                        }
+                        (0, MalVal::Symbol(s), MalVal::Symbol(t))
                             if s.as_str() == "&" && t.as_str() != "&" =>
                         {
                             Ok((vec, Some(t.to_string())))
