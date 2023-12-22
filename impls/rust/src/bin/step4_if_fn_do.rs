@@ -94,6 +94,7 @@ fn READ(input: String) -> MalResult {
     reader::read_str(input)
 }
 
+// TODO: if letを使う
 #[allow(non_snake_case)]
 fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
     match input {
@@ -119,8 +120,16 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                     .iter()
                     .map(|item| EVAL(item, env))
                     .collect::<Result<_, _>>()?),
-                // TODO: 実装
-                Ok(MalVal::Func(_f, _)) => todo!("user defined function"),
+                Ok(MalVal::Func(f, _)) => {
+                    let (rev_p, v) = f.params.clone();
+                    let mut new_env = Env::with_bind(
+                        Some(env),
+                        rev_p.into_iter().rev(),
+                        v,
+                        list[1..].iter().cloned(),
+                    );
+                    EVAL(&f.body, &mut new_env)
+                }
                 Ok(t) => Err(MalError::InvalidType(
                     printer::pr_str(&t),
                     "function".to_string(),
@@ -319,7 +328,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
                         )),
                     },
                 )?;
-                (vec, variadic)
+                (vec, variadic) // vecは逆順になっていることに注意
             },
             body: list[2].clone(),
             env: env.clone(),

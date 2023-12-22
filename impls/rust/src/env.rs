@@ -32,7 +32,7 @@ impl Env {
         args: J,
     ) -> Self
     where
-        I: IntoIterator<Item = String> + ExactSizeIterator,
+        I: Iterator<Item = String> + ExactSizeIterator,
         J: Iterator<Item = MalVal> + ExactSizeIterator + Clone,
     {
         if let Some(var) = variadic
@@ -42,7 +42,7 @@ impl Env {
             Env(Rc::new(RefCell::new(EnvEntity {
                 outer: outer.cloned(),
                 data: iter::zip(
-                    params.into_iter().chain(iter::once(var)),
+                    params.chain(iter::once(var)),
                     args.clone()
                         .take(len)
                         .chain(iter::once(MalVal::vec(args.skip(len).collect()))),

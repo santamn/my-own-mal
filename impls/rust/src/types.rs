@@ -26,14 +26,7 @@ pub enum MalVal<S = FnvBuildHasher> {
 
 #[derive(Debug, Clone)]
 pub struct Closure<S = FnvBuildHasher> {
-    pub params: (Vec<String>, Option<String>),
-    pub body: MalVal<S>,
-    pub env: Env,
-}
-
-// TODO: MalValにこのジェネリックスが伝播してしまう
-pub struct Clojure<I, S> {
-    pub params: (I, Option<String>),
+    pub params: (Vec<String>, Option<String>), // vecが逆順になっていることに注意
     pub body: MalVal<S>,
     pub env: Env,
 }
