@@ -1,5 +1,6 @@
 #![feature(let_chains)]
 
+pub mod core;
 pub mod env;
 pub mod printer;
 pub mod reader;
