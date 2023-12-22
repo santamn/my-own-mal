@@ -278,15 +278,21 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
         Ok(MalVal::func(Closure {
             params: {
                 let len = params.len();
-                let (vec, v) = params.windows(2).rev().enumerate().try_fold(
+                let (vec, variadic) = params.windows(2).rev().enumerate().try_fold(
                     (Vec::with_capacity(len), None),
                     |(mut vec, v), (i, w)| match (i, w[0].clone(), w[1].clone()) {
-                        (0, MalVal::Symbol(s), MalVal::Symbol(t)) if s.as_str() == "&" => {
+                        (0, MalVal::Symbol(s), MalVal::Symbol(t))
+                            if s.as_str() == "&" && t.as_str() != "&" =>
+                        {
                             Ok((vec, Some(t.to_string())))
                         }
-                        (_, MalVal::Symbol(s), MalVal::Symbol(_)) if s.as_str() == "&" => Err(
-                            MalError::InvalidSyntax("'&' in incorrect position".to_string()),
-                        ),
+                        (_, MalVal::Symbol(s), MalVal::Symbol(t))
+                            if s.as_str() == "&" || t.as_str() == "&" =>
+                        {
+                            Err(MalError::InvalidSyntax(
+                                "'&' in incorrect position".to_string(),
+                            ))
+                        }
                         (_, MalVal::Symbol(s), MalVal::Symbol(_)) => Ok((
                             {
                                 vec.push(s.to_string());
@@ -301,7 +307,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
                         )),
                     },
                 )?;
-                (vec, v)
+                (vec, variadic)
             },
             body: list[2].clone(),
             env: env.clone(),
