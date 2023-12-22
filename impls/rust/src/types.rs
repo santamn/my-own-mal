@@ -106,8 +106,7 @@ where
             MalVal::Vector(_, _) => "vector".to_string(),
             MalVal::HashMap(_, _) => "hash-map".to_string(),
             MalVal::HashSet(_, _) => "hash-set".to_string(),
-            MalVal::BuiltinFn(_) => "function".to_string(),
-            MalVal::Func(_, _) => "function".to_string(),
+            MalVal::BuiltinFn(_) | MalVal::Func(_, _) => "function".to_string(),
         }
     }
 }
