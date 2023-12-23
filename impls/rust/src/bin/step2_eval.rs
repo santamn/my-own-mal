@@ -9,7 +9,7 @@ use rustyline::DefaultEditor;
 type ReplEnv = FnvHashMap<String, MalVal>;
 
 fn main() {
-    let mut env = ReplEnv::default();
+    let env = ReplEnv::default();
 
     loop {
         let mut editor = DefaultEditor::new().unwrap();
