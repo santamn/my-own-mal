@@ -176,7 +176,7 @@ impl Hash for MalVal {
 
 impl Display for MalVal {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", pr_str(self))
+        write!(f, "{}", pr_str(self, true))
     }
 }
 

@@ -1,4 +1,5 @@
 #![feature(let_chains)]
+#![feature(iterator_try_reduce)]
 
 pub mod core;
 pub mod env;

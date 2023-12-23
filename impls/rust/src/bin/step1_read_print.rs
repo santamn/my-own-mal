@@ -32,7 +32,7 @@ fn EVAL(input: MalVal) -> MalVal {
 
 #[allow(non_snake_case)]
 fn PRINT(input: MalVal) -> String {
-    printer::pr_str(&input)
+    printer::pr_str(&input, false)
 }
 
 fn rep(input: String) -> Result<String, MalError> {

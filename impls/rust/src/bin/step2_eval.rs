@@ -6,76 +6,10 @@ use rusty_mal::types::{MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 
-use rusty_mal::printer::pr_str;
-
 type ReplEnv = FnvHashMap<String, MalVal>;
 
 fn main() {
     let mut env = ReplEnv::default();
-    env.insert(
-        "+".to_string(),
-        MalVal::BuiltinFn(|args| {
-            args.iter()
-                .try_fold(MalVal::Number(0), |acc, x| match (acc, x) {
-                    (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc + x)),
-                    _ => Err(MalError::InvalidType(
-                        pr_str(x),
-                        "number".to_string(),
-                        x.type_str(),
-                    )),
-                })
-        }),
-    );
-    env.insert(
-        "-".to_string(),
-        MalVal::BuiltinFn(|args| {
-            args.iter()
-                .skip(1)
-                .try_fold(args[0].clone(), |acc, x| match (acc, x) {
-                    (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc - x)),
-                    _ => Err(MalError::InvalidType(
-                        pr_str(x),
-                        "number".to_string(),
-                        x.type_str(),
-                    )),
-                })
-        }),
-    );
-    env.insert(
-        "*".to_string(),
-        MalVal::BuiltinFn(|args| {
-            args.iter()
-                .try_fold(MalVal::Number(1), |acc, x| match (acc, x) {
-                    (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc * x)),
-                    _ => Err(MalError::InvalidType(
-                        pr_str(x),
-                        "number".to_string(),
-                        x.type_str(),
-                    )),
-                })
-        }),
-    );
-    env.insert(
-        "/".to_string(),
-        MalVal::BuiltinFn(|args| {
-            args.iter()
-                .skip(1)
-                .try_fold(args[0].clone(), |acc, x| match (acc, x) {
-                    (MalVal::Number(acc), MalVal::Number(x)) => {
-                        if *x == 0 {
-                            Err(MalError::DividedByZero)
-                        } else {
-                            Ok(MalVal::Number(acc / x))
-                        }
-                    }
-                    _ => Err(MalError::InvalidType(
-                        pr_str(x),
-                        "number".to_string(),
-                        x.type_str(),
-                    )),
-                })
-        }),
-    );
 
     loop {
         let mut editor = DefaultEditor::new().unwrap();
@@ -123,7 +57,7 @@ fn EVAL(input: MalVal, env: &ReplEnv) -> MalResult {
 
 #[allow(non_snake_case)]
 fn PRINT(input: MalVal) -> String {
-    printer::pr_str(&input)
+    printer::pr_str(&input, false)
 }
 
 fn rep(input: String, env: &ReplEnv) -> Result<String, MalError> {

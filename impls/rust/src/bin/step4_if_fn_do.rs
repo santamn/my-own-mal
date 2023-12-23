@@ -1,6 +1,7 @@
 #![feature(iterator_try_reduce)]
 
 use itertools::Itertools;
+use rusty_mal::core;
 use rusty_mal::env::Env;
 use rusty_mal::printer;
 use rusty_mal::reader;
@@ -10,70 +11,7 @@ use rustyline::DefaultEditor;
 
 fn main() {
     // 将来的にマクロにしたい
-    let mut env = Env::new(None);
-    env.set(
-        "+",
-        MalVal::BuiltinFn(|args| {
-            args.into_iter()
-                .try_reduce(|acc, x| match (acc, x) {
-                    (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc + x)),
-                    (z, MalVal::Number(_)) | (_, z) => Err(MalError::InvalidType(
-                        printer::pr_str(&z),
-                        "number".to_string(),
-                        z.type_str(),
-                    )),
-                })?
-                .ok_or(MalError::WrongArity("+".to_string(), Arity::Variadic(1), 0))
-        }),
-    );
-    env.set(
-        "-",
-        MalVal::BuiltinFn(|args| {
-            args.into_iter()
-                .try_reduce(|acc, x| match (acc, x) {
-                    (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc - x)),
-                    (z, MalVal::Number(_)) | (_, z) => Err(MalError::InvalidType(
-                        printer::pr_str(&z),
-                        "number".to_string(),
-                        z.type_str(),
-                    )),
-                })?
-                .ok_or(MalError::WrongArity("-".to_string(), Arity::Variadic(1), 0))
-        }),
-    );
-    env.set(
-        "*",
-        MalVal::BuiltinFn(|args| {
-            args.into_iter()
-                .try_reduce(|acc, x| match (acc, x) {
-                    (MalVal::Number(acc), MalVal::Number(x)) => Ok(MalVal::Number(acc * x)),
-                    (z, MalVal::Number(_)) | (_, z) => Err(MalError::InvalidType(
-                        printer::pr_str(&z),
-                        "number".to_string(),
-                        z.type_str(),
-                    )),
-                })?
-                .ok_or(MalError::WrongArity("*".to_string(), Arity::Variadic(1), 0))
-        }),
-    );
-    env.set(
-        "/",
-        MalVal::BuiltinFn(|args| {
-            args.into_iter()
-                .try_reduce(|acc, x| match (acc, x) {
-                    (MalVal::Number(acc), MalVal::Number(x)) => acc
-                        .checked_div(x)
-                        .map(MalVal::Number)
-                        .ok_or(MalError::DividedByZero),
-                    (z, MalVal::Number(_)) | (_, z) => Err(MalError::InvalidType(
-                        printer::pr_str(&z),
-                        "number".to_string(),
-                        z.type_str(),
-                    )),
-                })?
-                .ok_or(MalError::WrongArity("/".to_string(), Arity::Variadic(1), 0))
-        }),
-    );
+    let mut env = core::env();
 
     loop {
         let mut editor = DefaultEditor::new().unwrap();
@@ -126,12 +64,12 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                         Some(env),
                         rev_p.into_iter().rev(),
                         v,
-                        list[1..].iter().cloned(),
+                        list[1..].iter().cloned(), // TODO: argの数が足りない場合のエラー処理
                     );
                     EVAL(&f.body, &mut new_env)
                 }
                 Ok(t) => Err(MalError::InvalidType(
-                    printer::pr_str(&t),
+                    printer::pr_str(&t, true),
                     "function".to_string(),
                     t.type_str(),
                 )),
@@ -144,7 +82,7 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
 
 #[allow(non_snake_case)]
 fn PRINT(input: &MalVal) -> String {
-    printer::pr_str(input)
+    printer::pr_str(input, false)
 }
 
 fn rep(input: String, env: &mut Env) -> Result<String, MalError> {
@@ -191,7 +129,7 @@ fn special_def(list: &[MalVal], env: &mut Env) -> MalResult {
         Ok(val)
     } else {
         Err(MalError::InvalidType(
-            printer::pr_str(&list[1]),
+            printer::pr_str(&list[1], true),
             "symbol".to_string(),
             list[1].type_str(),
         ))
@@ -220,7 +158,7 @@ fn special_let(list: &[MalVal], env: &Env) -> MalResult {
                     Ok(())
                 } else {
                     Err(MalError::InvalidType(
-                        printer::pr_str(k),
+                        printer::pr_str(k, true),
                         "symbol".to_string(),
                         k.type_str(),
                     ))
@@ -228,7 +166,7 @@ fn special_let(list: &[MalVal], env: &Env) -> MalResult {
             })?;
     } else {
         return Err(MalError::InvalidType(
-            printer::pr_str(&list[1]),
+            printer::pr_str(&list[1], true),
             "list or vec".to_string(),
             list[1].type_str(),
         ));
@@ -322,7 +260,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
                             v,
                         )),
                         (_, x, MalVal::Symbol(_)) | (_, _, x) => Err(MalError::InvalidType(
-                            printer::pr_str(&x),
+                            printer::pr_str(&x, true),
                             "symbol".to_string(),
                             x.type_str(),
                         )),
@@ -335,7 +273,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
         }))
     } else {
         Err(MalError::InvalidType(
-            printer::pr_str(&list[1]),
+            printer::pr_str(&list[1], true),
             "list or vec".to_string(),
             list[1].type_str(),
         ))

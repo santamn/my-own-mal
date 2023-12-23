@@ -52,7 +52,8 @@ impl Env {
         } else {
             Env(Rc::new(RefCell::new(EnvEntity {
                 outer: outer.cloned(),
-                data: iter::zip(params, args).collect(),
+                // argsが少ない場合はnilで埋める
+                data: iter::zip(params, args.chain(iter::repeat(MalVal::Nil))).collect(),
             })))
         }
     }
@@ -76,5 +77,14 @@ impl Env {
         T: Into<String>,
     {
         self.0.borrow_mut().data.insert(key.into(), val);
+    }
+}
+
+impl<const N: usize> From<[(String, MalVal); N]> for Env {
+    fn from(arr: [(String, MalVal); N]) -> Self {
+        Env(Rc::new(RefCell::new(EnvEntity {
+            outer: None,
+            data: arr.into_iter().collect(),
+        })))
     }
 }
