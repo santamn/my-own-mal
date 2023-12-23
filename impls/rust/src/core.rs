@@ -3,7 +3,6 @@ use crate::printer;
 use crate::types::{MalError, MalVal};
 use itertools::Itertools;
 
-// TODO: 比較演算子でも使えるように抽象化したい
 macro_rules! int_op {
     ($name:expr, $func:expr) => {
         crate::types::MalVal::BuiltinFn(|args| {

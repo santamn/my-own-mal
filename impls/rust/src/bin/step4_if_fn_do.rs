@@ -64,7 +64,7 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                         Some(env),
                         rev_p.into_iter().rev(),
                         v,
-                        list[1..].iter().cloned(), // TODO: argの数が足りない場合のエラー処理
+                        list[1..].iter().cloned(),
                     );
                     EVAL(&f.body, &mut new_env)
                 }
