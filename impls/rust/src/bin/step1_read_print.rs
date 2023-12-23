@@ -1,9 +1,9 @@
-use rusty_mal::printer;
-use rusty_mal::reader;
-use rusty_mal::types::MalError;
-use rusty_mal::types::{MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
+use rustymal::printer;
+use rustymal::reader;
+use rustymal::types::MalError;
+use rustymal::types::{MalResult, MalVal};
 
 fn main() {
     loop {

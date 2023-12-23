@@ -1,13 +1,13 @@
 #![feature(iterator_try_reduce)]
 
 use itertools::Itertools;
-use rusty_mal::core;
-use rusty_mal::env::Env;
-use rusty_mal::printer;
-use rusty_mal::reader;
-use rusty_mal::types::{Arity, Closure, MalError, MalResult, MalVal};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
+use rustymal::core;
+use rustymal::env::Env;
+use rustymal::printer;
+use rustymal::reader;
+use rustymal::types::{Arity, Closure, MalError, MalResult, MalVal};
 
 fn main() {
     // 将来的にマクロにしたい
