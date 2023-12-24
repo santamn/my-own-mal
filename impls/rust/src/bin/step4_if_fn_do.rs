@@ -225,45 +225,54 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
         Ok(MalVal::func(Closure {
             params: {
                 let len = params.len();
-                let (vec, variadic) = params.windows(2).rev().enumerate().try_fold(
+                // 逆順で引数をチェックする
+                // [a b & c] => (& c), (a b)
+                let (vec, variadic) = params.rchunks(2).enumerate().try_fold(
                     (Vec::with_capacity(len), None),
-                    |(mut vec, v), (i, w)| match (i, w[0].clone(), w[1].clone()) {
-                        (0, MalVal::Symbol(s), MalVal::Symbol(t))
-                            if s.as_str() != "&" && t.as_str() != "&" =>
-                        {
-                            Ok((
-                                {
-                                    vec.push(t.to_string());
-                                    vec.push(s.to_string());
-                                    vec
-                                },
-                                v,
-                            ))
-                        }
-                        (0, MalVal::Symbol(s), MalVal::Symbol(t))
+                    // SAFETY: 常にc.len() >= 1
+                    |(mut vec, v), (i, c)| match (i, unsafe { c.get_unchecked(0) }, c.get(1)) {
+                        (0, MalVal::Symbol(s), Some(MalVal::Symbol(t)))
                             if s.as_str() == "&" && t.as_str() != "&" =>
                         {
                             Ok((vec, Some(t.to_string())))
                         }
-                        (_, MalVal::Symbol(s), MalVal::Symbol(t))
+                        (_, MalVal::Symbol(s), Some(MalVal::Symbol(t)))
                             if s.as_str() == "&" || t.as_str() == "&" =>
                         {
                             Err(MalError::InvalidSyntax(
                                 "'&' in incorrect position".to_string(),
                             ))
                         }
-                        (_, MalVal::Symbol(s), MalVal::Symbol(_)) => Ok((
+                        (_, MalVal::Symbol(s), Some(MalVal::Symbol(t))) => Ok((
                             {
+                                vec.push(t.to_string());
                                 vec.push(s.to_string());
                                 vec
                             },
                             v,
                         )),
-                        (_, x, MalVal::Symbol(_)) | (_, _, x) => Err(MalError::InvalidType(
-                            printer::pr_str(&x, true),
-                            "symbol".to_string(),
-                            x.type_str(),
-                        )),
+                        (_, MalVal::Symbol(s), None) => {
+                            if s.as_str() != "&" {
+                                Ok((
+                                    {
+                                        vec.push(s.to_string());
+                                        vec
+                                    },
+                                    v,
+                                ))
+                            } else {
+                                Err(MalError::InvalidSyntax(
+                                    "'&' in incorrect position".to_string(),
+                                ))
+                            }
+                        }
+                        (_, x, Some(MalVal::Symbol(_))) | (_, _, Some(x)) | (_, x, None) => {
+                            Err(MalError::InvalidType(
+                                printer::pr_str(x, true),
+                                "symbol".to_string(),
+                                x.type_str(),
+                            ))
+                        }
                     },
                 )?;
                 (vec, variadic) // vecは逆順になっていることに注意

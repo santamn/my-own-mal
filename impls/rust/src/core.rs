@@ -96,26 +96,22 @@ pub fn env() -> Env {
         ),
         (
             "count".to_string(),
-            MalVal::BuiltinFn(|args| {
-                if let Some(MalVal::List(list, _)) = args.get(0) {
-                    Ok(MalVal::Number(list.len() as i64))
-                } else {
-                    Err(MalError::InvalidType(
-                        crate::printer::pr_str(&args[0], true),
-                        "list".to_string(),
-                        args[0].type_str(),
-                    ))
-                }
+            MalVal::BuiltinFn(|args| match args.get(0) {
+                Some(MalVal::List(list, _)) => Ok(MalVal::Number(list.len() as i64)),
+                Some(MalVal::Vector(vec, _)) => Ok(MalVal::Number(vec.len() as i64)),
+                Some(MalVal::HashMap(map, _)) => Ok(MalVal::Number(map.len() as i64)),
+                Some(MalVal::HashSet(set, _)) => Ok(MalVal::Number(set.len() as i64)),
+                None => Ok(MalVal::Number(0)),
+                Some(z) => Err(MalError::InvalidType(
+                    printer::pr_str(z, true),
+                    "list or vector or hashmap or hashset".to_string(),
+                    z.type_str(),
+                )),
             }),
         ),
         (
             "=".to_string(),
-            MalVal::BuiltinFn(|args| {
-                let first = args[0].clone();
-                Ok(MalVal::Bool(
-                    args.into_iter().fold(true, |acc, x| acc && first == x),
-                ))
-            }),
+            MalVal::BuiltinFn(|args| Ok(MalVal::Bool(args.into_iter().all_equal()))),
         ),
         ("<".to_string(), int_cmp!(|a, b| a < b)),
         ("<=".to_string(), int_cmp!(|a, b| a <= b)),
