@@ -10,13 +10,11 @@ use rustymal::reader;
 use rustymal::types::{Arity, Closure, MalError, MalResult, MalVal};
 
 fn main() {
-    // 将来的にマクロにしたい
     let mut env = core::env();
-
     loop {
         let mut editor = DefaultEditor::new().unwrap();
-        let readline = editor.readline("user> ");
-        match readline {
+        let line = editor.readline("user=> ");
+        match line {
             Ok(line) => println!("{}", rep(line, &mut env).unwrap_or_else(|e| e.to_string())),
             Err(ReadlineError::Interrupted) => continue,
             Err(ReadlineError::Eof) => break,
@@ -53,12 +51,15 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                 };
             }
 
-            match eval_ast(&list[0], env) {
-                Ok(MalVal::BuiltinFn(f)) => f(list[1..]
+            let MalVal::List(list, _) = eval_ast(input, env)? else {
+                unreachable!("eval_ast should return MalVal::List")
+            };
+            match &list[0] {
+                MalVal::BuiltinFn(f) => f(list[1..]
                     .iter()
-                    .map(|item| EVAL(item, env))
+                    .map(|item| EVAL(item, env)) // TODO: 評価しすぎ?
                     .collect::<Result<_, _>>()?),
-                Ok(MalVal::Func(f, _)) => {
+                MalVal::Func(f, _) => {
                     let (rev_p, v) = f.params.clone();
                     let mut new_env = Env::with_bind(
                         Some(env),
@@ -68,12 +69,11 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                     );
                     EVAL(&f.body, &mut new_env)
                 }
-                Ok(t) => Err(MalError::InvalidType(
-                    printer::pr_str(&t, true),
+                not_func => Err(MalError::InvalidType(
+                    printer::pr_str(&not_func, true),
                     "function".to_string(),
-                    t.type_str(),
+                    not_func.type_str(),
                 )),
-                err => err,
             }
         }
         _ => eval_ast(input, env),
@@ -89,6 +89,7 @@ fn rep(input: String, env: &mut Env) -> Result<String, MalError> {
     Ok(PRINT(&EVAL(&READ(input)?, env)?))
 }
 
+// TODO: try_collectを使う
 fn eval_ast(ast: &MalVal, env: &mut Env) -> MalResult {
     match ast {
         MalVal::Symbol(s) => env
@@ -222,6 +223,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
     }
 
     if let MalVal::List(params, _) | MalVal::Vector(params, _) = &list[1] {
+        let ampersand_error = "invalid function definition: & in incorrect position";
         Ok(MalVal::func(Closure {
             params: {
                 let len = params.len();
@@ -239,9 +241,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
                         (_, MalVal::Symbol(s), Some(MalVal::Symbol(t)))
                             if s.as_str() == "&" || t.as_str() == "&" =>
                         {
-                            Err(MalError::InvalidSyntax(
-                                "'&' in incorrect position".to_string(),
-                            ))
+                            Err(MalError::InvalidSyntax(ampersand_error.to_string()))
                         }
                         (_, MalVal::Symbol(s), Some(MalVal::Symbol(t))) => Ok((
                             {
@@ -261,9 +261,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
                                     v,
                                 ))
                             } else {
-                                Err(MalError::InvalidSyntax(
-                                    "'&' in incorrect position".to_string(),
-                                ))
+                                Err(MalError::InvalidSyntax(ampersand_error.to_string()))
                             }
                         }
                         (_, x, Some(MalVal::Symbol(_))) | (_, _, Some(x)) | (_, x, None) => {

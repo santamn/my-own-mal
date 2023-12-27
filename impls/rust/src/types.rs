@@ -1,12 +1,11 @@
 use fnv::FnvBuildHasher;
 use std::collections::{HashMap, HashSet};
-use std::fmt::Display;
-use std::fmt::{Formatter, Result as FmtResult};
+use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::rc::Rc;
 
 use crate::env::Env;
-use crate::printer::pr_str;
+use crate::printer;
 
 #[derive(Debug, Clone)]
 pub enum MalVal<S = FnvBuildHasher> {
@@ -176,7 +175,7 @@ impl Hash for MalVal {
 
 impl Display for MalVal {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", pr_str(self, true))
+        write!(f, "{}", printer::pr_str(self, true))
     }
 }
 
