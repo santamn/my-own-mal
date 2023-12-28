@@ -25,7 +25,7 @@ pub enum MalVal<S = FnvBuildHasher> {
 
 #[derive(Debug, Clone)]
 pub struct Closure<S = FnvBuildHasher> {
-    pub params: (Vec<String>, Option<String>), // vecが逆順になっていることに注意
+    pub rev_params: (Vec<String>, Option<String>), // WARNING: vecが逆順になっている
     pub body: MalVal<S>,
     pub env: Env,
 }
@@ -166,7 +166,7 @@ impl Hash for MalVal {
             MalVal::BuiltinFn(f) => state.write_usize(f as *const _ as usize),
             MalVal::Func(f, _) => {
                 state.write_usize(f as *const _ as usize);
-                f.params.hash(state);
+                f.rev_params.hash(state);
                 f.body.hash(state);
             }
         }

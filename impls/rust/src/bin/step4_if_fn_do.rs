@@ -54,13 +54,11 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
             let MalVal::List(list, _) = eval_ast(input, env)? else {
                 unreachable!("eval_ast should return MalVal::List")
             };
+            // TODO: vecやhashmapも関数のように扱えるようにする
             match &list[0] {
-                MalVal::BuiltinFn(f) => f(list[1..]
-                    .iter()
-                    .map(|item| EVAL(item, env)) // TODO: 評価しすぎ?
-                    .collect::<Result<_, _>>()?),
+                MalVal::BuiltinFn(f) => f(list[1..].to_vec()),
                 MalVal::Func(f, _) => {
-                    let (rev_p, v) = f.params.clone();
+                    let (rev_p, v) = f.rev_params.clone();
                     let mut new_env = Env::with_bind(
                         Some(env),
                         rev_p.into_iter().rev(),
@@ -225,7 +223,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
     if let MalVal::List(params, _) | MalVal::Vector(params, _) = &list[1] {
         let ampersand_error = "invalid function definition: & in incorrect position";
         Ok(MalVal::func(Closure {
-            params: {
+            rev_params: {
                 let len = params.len();
                 // 逆順で引数をチェックする
                 // [a b & c] => (& c), (a b)
