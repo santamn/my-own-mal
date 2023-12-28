@@ -28,26 +28,22 @@ macro_rules! int_op {
     };
 }
 
-// try_foldの結果をmapしてResult<bool, MalError> -> Result<MalVal::Bool, MalError>にする
 macro_rules! int_cmp {
     ($cmp:expr) => {
         crate::types::MalVal::BuiltinFn(|args| {
-            Ok(crate::types::MalVal::Bool(
-                args.into_iter()
-                    .tuple_windows()
-                    .try_fold(true, |acc, (a, b)| match (a, b) {
-                        (crate::types::MalVal::Number(a), crate::types::MalVal::Number(b)) => {
-                            Ok(acc && $cmp(a, b))
-                        }
-                        (z, MalVal::Number(_)) | (_, z) => {
-                            Err(crate::types::MalError::InvalidType(
-                                crate::printer::pr_str(&z, true),
-                                "number".to_string(),
-                                z.type_str(),
-                            ))
-                        }
-                    })?,
-            ))
+            args.into_iter()
+                .tuple_windows()
+                .try_fold(true, |acc, (a, b)| match (a, b) {
+                    (crate::types::MalVal::Number(a), crate::types::MalVal::Number(b)) => {
+                        Ok(acc && $cmp(a, b))
+                    }
+                    (z, MalVal::Number(_)) | (_, z) => Err(crate::types::MalError::InvalidType(
+                        crate::printer::pr_str(&z, true),
+                        "number".to_string(),
+                        z.type_str(),
+                    )),
+                })
+                .map(crate::types::MalVal::Bool)
         })
     };
 }
@@ -98,16 +94,14 @@ pub fn env() -> Env {
         (
             "count".to_string(),
             MalVal::BuiltinFn(|args| match args.get(0) {
-                Some(MalVal::Nil) => Ok(MalVal::Number(0)),
-                Some(MalVal::String(s)) => Ok(MalVal::Number(s.len() as i64)), // TODO: どうする?
+                None | Some(MalVal::Nil) => Ok(MalVal::Number(0)),
                 Some(MalVal::List(list, _)) => Ok(MalVal::Number(list.len() as i64)),
                 Some(MalVal::Vector(vec, _)) => Ok(MalVal::Number(vec.len() as i64)),
                 Some(MalVal::HashMap(map, _)) => Ok(MalVal::Number(map.len() as i64)),
                 Some(MalVal::HashSet(set, _)) => Ok(MalVal::Number(set.len() as i64)),
-                None => Ok(MalVal::Number(0)),
                 Some(z) => Err(MalError::InvalidType(
                     printer::pr_str(z, true),
-                    "list or vector or hashmap or hashset".to_string(),
+                    "nil, list, vector, hashmap or hashset".to_string(),
                     z.type_str(),
                 )),
             }),
