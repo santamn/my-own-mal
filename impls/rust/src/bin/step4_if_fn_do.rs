@@ -68,7 +68,7 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                     EVAL(&f.body, &mut new_env)
                 }
                 not_func => Err(MalError::InvalidType(
-                    printer::pr_str(&not_func, true),
+                    printer::pr_str(not_func, true),
                     "function".to_string(),
                     not_func.type_str(),
                 )),

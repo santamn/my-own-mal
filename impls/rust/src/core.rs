@@ -28,6 +28,7 @@ macro_rules! int_op {
     };
 }
 
+// try_foldの結果をmapしてResult<bool, MalError> -> Result<MalVal::Bool, MalError>にする
 macro_rules! int_cmp {
     ($cmp:expr) => {
         crate::types::MalVal::BuiltinFn(|args| {
@@ -97,6 +98,8 @@ pub fn env() -> Env {
         (
             "count".to_string(),
             MalVal::BuiltinFn(|args| match args.get(0) {
+                Some(MalVal::Nil) => Ok(MalVal::Number(0)),
+                Some(MalVal::String(s)) => Ok(MalVal::Number(s.len() as i64)), // TODO: どうする?
                 Some(MalVal::List(list, _)) => Ok(MalVal::Number(list.len() as i64)),
                 Some(MalVal::Vector(vec, _)) => Ok(MalVal::Number(vec.len() as i64)),
                 Some(MalVal::HashMap(map, _)) => Ok(MalVal::Number(map.len() as i64)),
