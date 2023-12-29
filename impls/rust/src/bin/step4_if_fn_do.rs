@@ -273,7 +273,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
                 )?;
                 (vec, variadic) // vecは逆順になっていることに注意
             },
-            body: list[2].clone(),
+            body: list[2].clone(), // TODO: evalする必要がある？
             env: env.clone(),
         }))
     } else {
@@ -282,5 +282,36 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
             "list or vec".to_string(),
             list[1].type_str(),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rustymal::{core::env, types::MalVal};
+
+    #[test]
+    fn test_eval_nested_function() {
+        let mut env = env();
+        let nested_fn = MalVal::list(vec![
+            MalVal::list(vec![
+                MalVal::symbol("fn*"),
+                MalVal::list(vec![MalVal::symbol("a")]),
+                MalVal::list(vec![
+                    MalVal::symbol("fn*"),
+                    MalVal::list(vec![MalVal::symbol("b")]),
+                    MalVal::list(vec![
+                        MalVal::symbol("+"),
+                        MalVal::symbol("b"),
+                        MalVal::symbol("a"),
+                    ]),
+                ]),
+            ]),
+            MalVal::Number(5),
+        ]);
+        // (((fn* [a] (fn* [b] (+ a b))) 5) 7)
+        let applied = MalVal::list(vec![nested_fn.clone(), MalVal::Number(7)]);
+
+        println!("{:?}", super::EVAL(&nested_fn, &mut env).unwrap());
+        assert_eq!(super::EVAL(&applied, &mut env).unwrap(), MalVal::Number(12));
     }
 }
