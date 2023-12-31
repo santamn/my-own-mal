@@ -3,25 +3,26 @@ use crate::printer;
 use crate::types::{MalError, MalVal};
 use itertools::Itertools;
 
+#[macro_export]
 macro_rules! int_op {
     ($name:expr, $func:expr) => {
-        crate::types::MalVal::BuiltinFn(|args| {
+        $crate::types::MalVal::BuiltinFn(|args| {
             args.into_iter()
                 .try_reduce(|acc, x| match (acc, x) {
-                    (crate::types::MalVal::Number(acc), crate::types::MalVal::Number(x)) => {
+                    ($crate::types::MalVal::Number(acc), $crate::types::MalVal::Number(x)) => {
                         $func(acc, x)
                     }
-                    (z, crate::types::MalVal::Number(_)) | (_, z) => {
-                        Err(crate::types::MalError::InvalidType(
+                    (z, $crate::types::MalVal::Number(_)) | (_, z) => {
+                        Err($crate::types::MalError::InvalidType(
                             crate::printer::pr_str(&z, true),
                             "number".to_string(),
                             z.type_str(),
                         ))
                     }
                 })?
-                .ok_or(crate::types::MalError::WrongArity(
+                .ok_or($crate::types::MalError::WrongArity(
                     $name.to_string(),
-                    crate::types::Arity::Variadic(1),
+                    $crate::types::Arity::Variadic(1),
                     0,
                 ))
         })
@@ -30,24 +31,26 @@ macro_rules! int_op {
 
 macro_rules! int_cmp {
     ($cmp:expr) => {
-        crate::types::MalVal::BuiltinFn(|args| {
+        $crate::types::MalVal::BuiltinFn(|args| {
             args.into_iter()
                 .tuple_windows()
                 .try_fold(true, |acc, (a, b)| match (a, b) {
-                    (crate::types::MalVal::Number(a), crate::types::MalVal::Number(b)) => {
+                    ($crate::types::MalVal::Number(a), $crate::types::MalVal::Number(b)) => {
                         Ok(acc && $cmp(a, b))
                     }
-                    (z, MalVal::Number(_)) | (_, z) => Err(crate::types::MalError::InvalidType(
-                        crate::printer::pr_str(&z, true),
+                    (z, MalVal::Number(_)) | (_, z) => Err($crate::types::MalError::InvalidType(
+                        $crate::printer::pr_str(&z, true),
                         "number".to_string(),
                         z.type_str(),
                     )),
                 })
-                .map(crate::types::MalVal::Bool)
+                .map($crate::types::MalVal::Bool)
         })
     };
 }
 
+// 一回しか呼ばれないのでinlineにしておく
+#[inline]
 pub fn env() -> Env {
     [
         (

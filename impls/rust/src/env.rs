@@ -9,7 +9,7 @@ use crate::types::MalVal;
 #[derive(Debug, Clone)]
 struct EnvEntity {
     outer: Option<Env>,
-    data: FnvHashMap<String, MalVal>,
+    table: FnvHashMap<String, MalVal>,
 }
 
 // TODO: RefCellいらない?
@@ -20,7 +20,7 @@ impl Env {
     pub fn new(outer: Option<&Env>) -> Self {
         Env(Rc::new(RefCell::new(EnvEntity {
             outer: outer.cloned(),
-            data: FnvHashMap::default(),
+            table: FnvHashMap::default(),
         })))
     }
 
@@ -41,7 +41,7 @@ impl Env {
             let len = params.len();
             Env(Rc::new(RefCell::new(EnvEntity {
                 outer: outer.cloned(),
-                data: iter::zip(
+                table: iter::zip(
                     params.chain(iter::once(var)),
                     args.clone()
                         .take(len)
@@ -53,7 +53,7 @@ impl Env {
             Env(Rc::new(RefCell::new(EnvEntity {
                 outer: outer.cloned(),
                 // argsが少ない場合はnilで埋める
-                data: iter::zip(params, args.chain(iter::repeat(MalVal::Nil))).collect(),
+                table: iter::zip(params, args.chain(iter::repeat(MalVal::Nil))).collect(),
             })))
         }
     }
@@ -63,7 +63,7 @@ impl Env {
         K: Borrow<str>,
     {
         let env = RefCell::borrow(self.0.borrow());
-        match env.data.get(key.borrow()) {
+        match env.table.get(key.borrow()) {
             Some(val) => Some(val.clone()),
             None => match &env.outer {
                 Some(outer) => outer.get(key),
@@ -76,7 +76,7 @@ impl Env {
     where
         T: Into<String>,
     {
-        self.0.borrow_mut().data.insert(key.into(), val);
+        self.0.borrow_mut().table.insert(key.into(), val);
     }
 }
 
@@ -84,7 +84,7 @@ impl<const N: usize> From<[(String, MalVal); N]> for Env {
     fn from(arr: [(String, MalVal); N]) -> Self {
         Env(Rc::new(RefCell::new(EnvEntity {
             outer: None,
-            data: arr.into_iter().collect(),
+            table: arr.into_iter().collect(),
         })))
     }
 }

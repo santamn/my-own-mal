@@ -23,6 +23,7 @@ pub enum MalVal<S = FnvBuildHasher> {
     Func(Rc<Closure<S>>, Rc<MalVal>),
 }
 
+// TODO: pubを消す
 #[derive(Debug, Clone)]
 pub struct Closure<S = FnvBuildHasher> {
     pub rev_params: (Vec<String>, Option<String>), // WARNING: vecが逆順になっている

@@ -287,31 +287,101 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
 
 #[cfg(test)]
 mod tests {
-    use rustymal::{core::env, types::MalVal};
+    use rustymal::int_op;
+    use rustymal::{env::Env, types::MalVal};
 
     #[test]
     fn test_eval_nested_function() {
-        let mut env = env();
+        // (def! nested-fn (fn* [a] (fn* [b] (+ a b))))
         let nested_fn = MalVal::list(vec![
+            MalVal::symbol("fn*"),
+            MalVal::list(vec![MalVal::symbol("a")]),
             MalVal::list(vec![
                 MalVal::symbol("fn*"),
-                MalVal::list(vec![MalVal::symbol("a")]),
+                MalVal::list(vec![MalVal::symbol("b")]),
                 MalVal::list(vec![
-                    MalVal::symbol("fn*"),
-                    MalVal::list(vec![MalVal::symbol("b")]),
-                    MalVal::list(vec![
-                        MalVal::symbol("+"),
-                        MalVal::symbol("b"),
-                        MalVal::symbol("a"),
-                    ]),
+                    MalVal::symbol("+"),
+                    MalVal::symbol("b"),
+                    MalVal::symbol("a"),
                 ]),
             ]),
-            MalVal::Number(5),
         ]);
-        // (((fn* [a] (fn* [b] (+ a b))) 5) 7)
-        let applied = MalVal::list(vec![nested_fn.clone(), MalVal::Number(7)]);
+        // (nested-fn 7)
+        let appliy1 = MalVal::list(vec![nested_fn.clone(), MalVal::Number(7)]);
+        assert_eq!(
+            super::EVAL(&appliy1, &mut Env::new(None)).unwrap(),
+            MalVal::func(rustymal::types::Closure {
+                rev_params: (vec!["b".to_string()], None),
+                body: MalVal::list(vec![
+                    MalVal::symbol("+"),
+                    MalVal::symbol("b"),
+                    MalVal::symbol("a"),
+                ]),
+                env: [("a".to_string(), MalVal::Number(7))].into(),
+            })
+        );
 
-        println!("{:?}", super::EVAL(&nested_fn, &mut env).unwrap());
+        // ((nested-fn 7) 5)
+        let apply2 = MalVal::list(vec![appliy1.clone(), MalVal::Number(5)]);
+        let mut core_env: Env = [(
+            "+".to_string(),
+            int_op!("+", |a, b| Ok(MalVal::Number(a + b))),
+        )]
+        .into();
+        // println!("{:?}", super::EVAL(&nested_fn, &mut env).unwrap());
+        assert_eq!(
+            super::EVAL(&apply2, &mut core_env).unwrap(),
+            MalVal::Number(12)
+        );
+    }
+
+    #[test]
+    fn test_eval_body() {
+        // (def! body (+ a b))
+        let body = MalVal::list(vec![
+            MalVal::symbol("+"),
+            MalVal::symbol("b"),
+            MalVal::symbol("a"),
+        ]);
+
+        // Env {outer: Env {a: 5}, b: 7}
+        let core_env: Env = [(
+            "+".to_string(),
+            int_op!("+", |a, b| Ok(MalVal::Number(a + b))),
+        )]
+        .into();
+        let mut outer_env = Env::new(Some(&core_env));
+        outer_env.set("a", MalVal::Number(5));
+        let mut env = Env::new(Some(&outer_env));
+        env.set("b", MalVal::Number(7));
+
+        assert_eq!(super::EVAL(&body, &mut env).unwrap(), MalVal::Number(12));
+    }
+
+    #[test]
+    fn test_eval_func_with_env() {
+        // (defn! func (fn* [b] (+ b a)))
+        let func = MalVal::list(vec![
+            MalVal::symbol("fn*"),
+            MalVal::list(vec![MalVal::symbol("b")]),
+            MalVal::list(vec![
+                MalVal::symbol("+"),
+                MalVal::symbol("b"),
+                MalVal::symbol("a"),
+            ]),
+        ]);
+        // (func 5)
+        let applied = MalVal::list(vec![func.clone(), MalVal::Number(5)]);
+
+        // Env {a: 7}
+        let core_env: Env = [(
+            "+".to_string(),
+            int_op!("+", |a, b| Ok(MalVal::Number(a + b))),
+        )]
+        .into();
+        let mut env = Env::new(Some(&core_env));
+        env.set("a", MalVal::Number(7));
+
         assert_eq!(super::EVAL(&applied, &mut env).unwrap(), MalVal::Number(12));
     }
 }
