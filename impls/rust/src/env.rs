@@ -35,27 +35,21 @@ impl Env {
     // 関数の仮引数と実引数を受け取り、新たな環境を作成する
     pub fn with_bind<I, J>(
         outer: Option<&Env>,
-        params: I,
+        params: I,                // 仮引数
         variadic: Option<String>, // 可変長引数
-        args: J,
+        args: J,                  //　実引数
     ) -> Self
     where
         I: Iterator<Item = String> + ExactSizeIterator,
-        J: Iterator<Item = MalVal> + ExactSizeIterator + Clone,
+        J: Iterator<Item = MalVal> + Clone,
     {
-        if let Some(var) = variadic
-            && args.len() > params.len()
-        {
+        if let Some(var) = variadic {
             let len = params.len();
             Env(Rc::new(RefCell::new(EnvEntity {
                 outer: outer.cloned(),
-                table: iter::zip(
-                    params.chain(iter::once(var)),
-                    args.clone()
-                        .take(len)
-                        .chain(iter::once(MalVal::list(args.skip(len).collect()))),
-                )
-                .collect(),
+                table: iter::zip(params, args.clone().take(len))
+                    .chain(iter::once((var, MalVal::list(args.skip(len).collect()))))
+                    .collect(),
             })))
         } else {
             Env(Rc::new(RefCell::new(EnvEntity {

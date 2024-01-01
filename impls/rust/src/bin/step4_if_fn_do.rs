@@ -175,14 +175,6 @@ fn special_let(list: &[MalVal], env: &Env) -> MalResult {
 }
 
 fn special_do(list: &[MalVal], env: &mut Env) -> MalResult {
-    if list.len() < 2 {
-        return Err(MalError::WrongArity(
-            "do".to_string(),
-            Arity::Variadic(1),
-            list.len() - 1,
-        ));
-    }
-
     list[1..]
         .iter()
         .try_fold(MalVal::Nil, |_, item| EVAL(item, env))
@@ -267,7 +259,7 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
                     }
                 },
             )?, // NOTE: vecは逆順になっている
-            body: list[2].clone(), // TODO: evalする必要がある？
+            body: list[2].clone(),
             env: env.clone(),
         }))
     } else {
@@ -388,5 +380,37 @@ mod tests {
         env.set("a", MalVal::Number(7));
 
         assert_eq!(super::EVAL(&applied, &mut env).unwrap(), MalVal::Number(12));
+    }
+
+    #[test]
+    fn test_eval_variadic_func() {
+        // (defn! func (fn* [& more] (count more)))
+        let func = MalVal::list(vec![
+            MalVal::symbol("fn*"),
+            MalVal::list(vec![MalVal::symbol("&"), MalVal::symbol("more")]),
+            MalVal::list(vec![MalVal::symbol("count"), MalVal::symbol("more")]),
+        ]);
+
+        // (func)
+        assert_eq!(
+            super::EVAL(
+                &MalVal::list(vec![func]),
+                &mut [(
+                    "count".to_string(),
+                    MalVal::BuiltinFn(|args| match args.get(0) {
+                        None | Some(MalVal::Nil) => Ok(MalVal::Number(0)),
+                        Some(MalVal::List(list, _)) => Ok(MalVal::Number(list.len() as i64)),
+                        Some(z) => Err(rustymal::types::MalError::InvalidType(
+                            rustymal::printer::pr_str(z, true),
+                            "nil or list".to_string(),
+                            z.type_str(),
+                        )),
+                    }),
+                )]
+                .into()
+            )
+            .unwrap(),
+            MalVal::Number(0)
+        );
     }
 }
