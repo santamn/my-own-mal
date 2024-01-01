@@ -141,7 +141,7 @@ pub fn env() -> Env {
             "prn".to_string(),
             MalVal::BuiltinFn(|args| {
                 args.into_iter()
-                    .for_each(|x| print!("{} ", printer::pr_str(&x, true)));
+                    .for_each(|x| println!("{}", printer::pr_str(&x, true)));
                 Ok(MalVal::Nil)
             }),
         ),
@@ -149,7 +149,7 @@ pub fn env() -> Env {
             "println".to_string(),
             MalVal::BuiltinFn(|args| {
                 args.into_iter()
-                    .for_each(|x| print!("{} ", printer::pr_str(&x, false)));
+                    .for_each(|x| println!("{}", printer::pr_str(&x, false)));
                 Ok(MalVal::Nil)
             }),
         ),

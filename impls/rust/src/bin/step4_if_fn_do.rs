@@ -185,9 +185,7 @@ fn special_do(list: &[MalVal], env: &mut Env) -> MalResult {
 
     list[1..]
         .iter()
-        .cloned()
-        .try_reduce(|_, ref item| EVAL(item, env))
-        .map(|v| v.unwrap())
+        .try_fold(MalVal::Nil, |_, item| EVAL(item, env))
 }
 
 fn special_if(list: &[MalVal], env: &mut Env) -> MalResult {
