@@ -53,7 +53,7 @@ impl Env {
                     params.chain(iter::once(var)),
                     args.clone()
                         .take(len)
-                        .chain(iter::once(MalVal::vec(args.skip(len).collect()))),
+                        .chain(iter::once(MalVal::list(args.skip(len).collect()))),
                 )
                 .collect(),
             })))
