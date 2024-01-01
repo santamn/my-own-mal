@@ -84,7 +84,7 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
 
 #[allow(non_snake_case)]
 fn PRINT(input: &MalVal) -> String {
-    printer::pr_str(input, false)
+    printer::pr_str(input, true)
 }
 
 // READ -> EVAL -> PRINT

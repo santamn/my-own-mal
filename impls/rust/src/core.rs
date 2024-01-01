@@ -90,7 +90,7 @@ pub fn env() -> Env {
             MalVal::BuiltinFn(|args| {
                 Ok(MalVal::Bool(matches!(
                     args.get(0),
-                    Some(MalVal::List(list, _)) if list.is_empty()
+                    Some(MalVal::List(v, _)) | Some(MalVal::Vector(v, _)) if v.is_empty()
                 )))
             }),
         ),
@@ -119,13 +119,8 @@ pub fn env() -> Env {
         (">=".to_string(), int_cmp!(|a, b| a >= b)),
         (
             "pr-str".to_string(),
-            MalVal::BuiltinFn(|args| {
-                Ok(MalVal::string(
-                    args.into_iter()
-                        .map(|x| printer::pr_str(&x, true))
-                        .collect::<String>(),
-                ))
-            }),
+            // NOTE: joinはDisplay実装を用いてString化を行う
+            MalVal::BuiltinFn(|args| Ok(MalVal::string(args.into_iter().join(" ")))),
         ),
         (
             "str".to_string(),
