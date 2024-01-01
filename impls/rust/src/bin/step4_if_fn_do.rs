@@ -11,6 +11,10 @@ use rustymal::types::{Arity, Closure, MalError, MalResult, MalVal};
 
 fn main() {
     let mut env = core::env();
+    let _ = rep(
+        "(def! not (fn* [a] (if a false true)))".to_string(),
+        &mut env,
+    );
     loop {
         let mut editor = DefaultEditor::new().unwrap();
         let line = editor.readline("user=> ");
@@ -83,6 +87,7 @@ fn PRINT(input: &MalVal) -> String {
     printer::pr_str(input, false)
 }
 
+// READ -> EVAL -> PRINT
 fn rep(input: String, env: &mut Env) -> Result<String, MalError> {
     Ok(PRINT(&EVAL(&READ(input)?, env)?))
 }
