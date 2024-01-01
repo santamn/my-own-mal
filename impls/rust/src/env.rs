@@ -1,20 +1,28 @@
 use fnv::FnvHashMap;
 use std::borrow::Borrow;
 use std::cell::RefCell;
+use std::fmt::Debug;
 use std::iter;
 use std::rc::Rc;
 
 use crate::types::MalVal;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct EnvEntity {
     outer: Option<Env>,
     table: FnvHashMap<String, MalVal>,
 }
 
 // TODO: RefCellいらない?
-#[derive(Debug, Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Env(Rc<RefCell<EnvEntity>>);
+
+impl Debug for Env {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let env = RefCell::borrow(self.0.borrow());
+        write!(f, "{{table: {:?}, outer: {:?}}}", env.table, env.outer)
+    }
+}
 
 impl Env {
     pub fn new(outer: Option<&Env>) -> Self {

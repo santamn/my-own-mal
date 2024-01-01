@@ -60,7 +60,7 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                 MalVal::Func(f, _) => {
                     let (rev_p, v) = f.rev_params.clone();
                     let mut new_env = Env::with_bind(
-                        Some(env),
+                        Some(&f.env),
                         rev_p.into_iter().rev(),
                         v,
                         list[1..].iter().cloned(),
@@ -223,56 +223,52 @@ fn special_fn(list: &[MalVal], env: &Env) -> MalResult {
     if let MalVal::List(params, _) | MalVal::Vector(params, _) = &list[1] {
         let ampersand_error = "invalid function definition: & in incorrect position";
         Ok(MalVal::func(Closure {
-            rev_params: {
-                let len = params.len();
-                // 逆順で引数をチェックする
-                // [a b & c] => (& c), (a b)
-                let (vec, variadic) = params.rchunks(2).enumerate().try_fold(
-                    (Vec::with_capacity(len), None),
-                    // SAFETY: 常にc.len() >= 1
-                    |(mut vec, v), (i, c)| match (i, unsafe { c.get_unchecked(0) }, c.get(1)) {
-                        (0, MalVal::Symbol(s), Some(MalVal::Symbol(t)))
-                            if s.as_str() == "&" && t.as_str() != "&" =>
+            // 逆順で引数をチェックする
+            // [a b & c] => (& c), (a b)
+            rev_params: params.rchunks(2).enumerate().try_fold(
+                (Vec::with_capacity(params.len()), None),
+                // SAFETY: 常にc.len() >= 1
+                |(mut vec, v), (i, c)| match (i, unsafe { c.get_unchecked(0) }, c.get(1)) {
+                    (0, MalVal::Symbol(s), Some(MalVal::Symbol(t)))
+                        if s.as_str() == "&" && t.as_str() != "&" =>
+                    {
+                        Ok((vec, Some(t.to_string())))
+                    }
+                    (_, MalVal::Symbol(s), Some(MalVal::Symbol(t)))
+                        if s.as_str() == "&" || t.as_str() == "&" =>
+                    {
+                        Err(MalError::InvalidSyntax(ampersand_error.to_string()))
+                    }
+                    (_, MalVal::Symbol(s), Some(MalVal::Symbol(t))) => Ok((
                         {
-                            Ok((vec, Some(t.to_string())))
-                        }
-                        (_, MalVal::Symbol(s), Some(MalVal::Symbol(t)))
-                            if s.as_str() == "&" || t.as_str() == "&" =>
-                        {
+                            vec.push(t.to_string());
+                            vec.push(s.to_string());
+                            vec
+                        },
+                        v,
+                    )),
+                    (_, MalVal::Symbol(s), None) => {
+                        if s.as_str() != "&" {
+                            Ok((
+                                {
+                                    vec.push(s.to_string());
+                                    vec
+                                },
+                                v,
+                            ))
+                        } else {
                             Err(MalError::InvalidSyntax(ampersand_error.to_string()))
                         }
-                        (_, MalVal::Symbol(s), Some(MalVal::Symbol(t))) => Ok((
-                            {
-                                vec.push(t.to_string());
-                                vec.push(s.to_string());
-                                vec
-                            },
-                            v,
-                        )),
-                        (_, MalVal::Symbol(s), None) => {
-                            if s.as_str() != "&" {
-                                Ok((
-                                    {
-                                        vec.push(s.to_string());
-                                        vec
-                                    },
-                                    v,
-                                ))
-                            } else {
-                                Err(MalError::InvalidSyntax(ampersand_error.to_string()))
-                            }
-                        }
-                        (_, x, Some(MalVal::Symbol(_))) | (_, _, Some(x)) | (_, x, None) => {
-                            Err(MalError::InvalidType(
-                                printer::pr_str(x, true),
-                                "symbol".to_string(),
-                                x.type_str(),
-                            ))
-                        }
-                    },
-                )?;
-                (vec, variadic) // vecは逆順になっていることに注意
-            },
+                    }
+                    (_, x, Some(MalVal::Symbol(_))) | (_, _, Some(x)) | (_, x, None) => {
+                        Err(MalError::InvalidType(
+                            printer::pr_str(x, true),
+                            "symbol".to_string(),
+                            x.type_str(),
+                        ))
+                    }
+                },
+            )?, // NOTE: vecは逆順になっている
             body: list[2].clone(), // TODO: evalする必要がある？
             env: env.clone(),
         }))
@@ -290,6 +286,7 @@ mod tests {
     use rustymal::int_op;
     use rustymal::{env::Env, types::MalVal};
 
+    // TODO: funcのevalでどのenvがいつ使われるかを見る
     #[test]
     fn test_eval_nested_function() {
         // (def! nested-fn (fn* [a] (fn* [b] (+ a b))))
@@ -307,30 +304,40 @@ mod tests {
             ]),
         ]);
         // (nested-fn 7)
-        let appliy1 = MalVal::list(vec![nested_fn.clone(), MalVal::Number(7)]);
-        assert_eq!(
-            super::EVAL(&appliy1, &mut Env::new(None)).unwrap(),
-            MalVal::func(rustymal::types::Closure {
-                rev_params: (vec!["b".to_string()], None),
-                body: MalVal::list(vec![
-                    MalVal::symbol("+"),
-                    MalVal::symbol("b"),
-                    MalVal::symbol("a"),
-                ]),
-                env: [("a".to_string(), MalVal::Number(7))].into(),
-            })
-        );
+        let appliy_a = MalVal::list(vec![nested_fn, MalVal::Number(7)]);
+        // 以下の等号は構造的には正しいが、Closure同士の比較ができないため失敗する
+        // assert_eq!(
+        //     super::EVAL(&appliy_a, &mut Env::new(None)).unwrap(),
+        //     MalVal::func(rustymal::types::Closure {
+        //         rev_params: (vec!["b".to_string()], None),
+        //         body: MalVal::list(vec![
+        //             MalVal::symbol("+"),
+        //             MalVal::symbol("b"),
+        //             MalVal::symbol("a"),
+        //         ]),
+        //         env: {
+        //             let outer = Env::new(None);
+        //             let mut env = Env::new(Some(&outer));
+        //             env.set("a", MalVal::Number(7));
+        //             env
+        //         },
+        //     })
+        // );
 
-        // ((nested-fn 7) 5)
-        let apply2 = MalVal::list(vec![appliy1.clone(), MalVal::Number(5)]);
         let mut core_env: Env = [(
             "+".to_string(),
             int_op!("+", |a, b| Ok(MalVal::Number(a + b))),
         )]
         .into();
         // println!("{:?}", super::EVAL(&nested_fn, &mut env).unwrap());
+
+        // ((nested-fn 7) 5)
         assert_eq!(
-            super::EVAL(&apply2, &mut core_env).unwrap(),
+            super::EVAL(
+                &MalVal::list(vec![appliy_a, MalVal::Number(5)]),
+                &mut core_env
+            )
+            .unwrap(),
             MalVal::Number(12)
         );
     }

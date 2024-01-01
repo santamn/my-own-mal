@@ -23,10 +23,9 @@ pub enum MalVal<S = FnvBuildHasher> {
     Func(Rc<Closure<S>>, Rc<MalVal>),
 }
 
-// TODO: pubを消す
 #[derive(Debug, Clone)]
 pub struct Closure<S = FnvBuildHasher> {
-    pub rev_params: (Vec<String>, Option<String>), // WARNING: vecが逆順になっている
+    pub rev_params: (Vec<String>, Option<String>),
     pub body: MalVal<S>,
     pub env: Env,
 }
@@ -118,7 +117,7 @@ impl PartialEq for MalVal {
             (MalVal::HashMap(a, _), MalVal::HashMap(b, _)) => a == b,
             (MalVal::HashSet(a, _), MalVal::HashSet(b, _)) => a == b,
             (MalVal::BuiltinFn(a), MalVal::BuiltinFn(b)) => a == b,
-            _ => false, // Func同士は常にfalse
+            _ => false, // NOTE: Func同士は常にfalse
         }
     }
 }
