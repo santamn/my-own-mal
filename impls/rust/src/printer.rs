@@ -7,6 +7,7 @@ pub fn pr_str(form: &MalVal, print_readably: bool) -> String {
         MalVal::Bool(b) => b.to_string(),
         MalVal::Number(n) => n.to_string(),
         MalVal::String(s) => format!(
+            // TODO: !pint_readably => ダブルクォートで囲まない
             "\"{}\"",
             if print_readably {
                 escape(s)
