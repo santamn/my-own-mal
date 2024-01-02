@@ -1,5 +1,7 @@
 #![feature(iterator_try_reduce)]
 
+use std::hint::unreachable_unchecked;
+
 use itertools::Itertools;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -56,7 +58,7 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
             }
 
             let MalVal::List(list, _) = eval_ast(input, env)? else {
-                unreachable!("eval_ast should return MalVal::List")
+                unsafe { unreachable_unchecked() }
             };
             // TODO: vecやhashmapも関数のように扱えるようにする
             match &list[0] {

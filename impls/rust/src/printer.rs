@@ -6,15 +6,13 @@ pub fn pr_str(form: &MalVal, print_readably: bool) -> String {
         MalVal::Nil => String::from("nil"),
         MalVal::Bool(b) => b.to_string(),
         MalVal::Number(n) => n.to_string(),
-        MalVal::String(s) => format!(
-            // TODO: !pint_readably => ダブルクォートで囲まない
-            "\"{}\"",
+        MalVal::String(s) => {
             if print_readably {
-                escape(s)
+                format!("\"{}\"", escape(s))
             } else {
                 s.to_string()
             }
-        ),
+        }
         MalVal::Keyword(k) => format!(":{}", k),
         MalVal::Symbol(s) => s.to_string(),
         MalVal::List(l, _) => format!(
