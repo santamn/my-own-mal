@@ -112,10 +112,10 @@ impl PartialEq for MalVal {
             (MalVal::String(a), MalVal::String(b)) => a == b,
             (MalVal::Keyword(a), MalVal::Keyword(b)) => a == b,
             (MalVal::Symbol(a), MalVal::Symbol(b)) => a == b,
-            (MalVal::List(a, _), MalVal::List(b, _))
-            | (MalVal::Vector(a, _), MalVal::List(b, _))
-            | (MalVal::List(a, _), MalVal::Vector(b, _))
-            | (MalVal::Vector(a, _), MalVal::Vector(b, _)) => a == b,
+            (
+                MalVal::List(a, _) | MalVal::Vector(a, _),
+                MalVal::List(b, _) | MalVal::Vector(b, _),
+            ) => a == b,
             (MalVal::HashMap(a, _), MalVal::HashMap(b, _)) => a == b,
             (MalVal::HashSet(a, _), MalVal::HashSet(b, _)) => a == b,
             (MalVal::BuiltinFn(a), MalVal::BuiltinFn(b)) => a == b,
