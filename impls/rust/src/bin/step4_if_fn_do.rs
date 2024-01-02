@@ -1,4 +1,5 @@
 #![feature(iterator_try_reduce)]
+#![feature(iterator_try_collect)]
 
 use std::hint::unreachable_unchecked;
 
@@ -13,10 +14,11 @@ use rustymal::types::{Arity, Closure, MalError, MalResult, MalVal};
 
 fn main() {
     let mut env = core::env();
-    let _ = rep(
+    rep(
         "(def! not (fn* [a] (if a false true)))".to_string(),
         &mut env,
-    );
+    )
+    .unwrap();
     loop {
         let mut editor = DefaultEditor::new().unwrap();
         let line = editor.readline("user=> ");
@@ -36,52 +38,50 @@ fn READ(input: String) -> MalResult {
     reader::read_str(input)
 }
 
-// TODO: if letを使う
 #[allow(non_snake_case)]
 fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
-    match input {
-        MalVal::List(ref list, _) => {
-            if list.is_empty() {
-                return Ok(input.clone());
-            }
-
-            // 特殊フォームの処理
-            if let MalVal::Symbol(s) = &list[0] {
-                match s.as_str() {
-                    "def!" => return special_def(list, env),
-                    "let*" => return special_let(list, env),
-                    "do" => return special_do(list, env),
-                    "if" => return special_if(list, env),
-                    "fn*" => return special_fn(list, env),
-                    _ => {}
-                };
-            }
-
-            let MalVal::List(list, _) = eval_ast(input, env)? else {
-                // SAFETY: Listの場合はeval_astで必ずMalVal::Listが返る
-                unsafe { unreachable_unchecked() }
-            };
-            // TODO: vecやhashmapも関数のように扱えるようにする
-            match &list[0] {
-                MalVal::BuiltinFn(f) => f(list[1..].to_vec()),
-                MalVal::Func(f, _) => {
-                    let (rev_p, v) = f.rev_params.clone();
-                    let mut new_env = Env::with_bind(
-                        Some(&f.env),
-                        rev_p.into_iter().rev(),
-                        v,
-                        list[1..].iter().cloned(),
-                    );
-                    EVAL(&f.body, &mut new_env)
-                }
-                not_func => Err(MalError::InvalidType(
-                    printer::pr_str(not_func, true),
-                    "function".to_string(),
-                    not_func.type_str(),
-                )),
-            }
+    if let MalVal::List(ref list, _) = input {
+        if list.is_empty() {
+            return Ok(input.clone());
         }
-        _ => eval_ast(input, env),
+
+        // 特殊フォームの処理
+        if let MalVal::Symbol(s) = &list[0] {
+            match s.as_str() {
+                "def!" => return special_def(list, env),
+                "let*" => return special_let(list, env),
+                "do" => return special_do(list, env),
+                "if" => return special_if(list, env),
+                "fn*" => return special_fn(list, env),
+                _ => {}
+            };
+        }
+
+        let MalVal::List(list, _) = eval_ast(input, env)? else {
+            // SAFETY: Listの場合はeval_astで必ずMalVal::Listが返る
+            unsafe { unreachable_unchecked() }
+        };
+        // TODO: vecやhashmapも関数のように扱えるようにする
+        match &list[0] {
+            MalVal::BuiltinFn(f) => f(list[1..].to_vec()),
+            MalVal::Func(f, _) => {
+                let (rev_p, v) = f.rev_params.clone();
+                let mut new_env = Env::with_bind(
+                    Some(&f.env),
+                    rev_p.into_iter().rev(),
+                    v,
+                    list[1..].iter().cloned(),
+                );
+                EVAL(&f.body, &mut new_env)
+            }
+            not_func => Err(MalError::InvalidType(
+                printer::pr_str(not_func, true),
+                "function".to_string(),
+                not_func.type_str(),
+            )),
+        }
+    } else {
+        eval_ast(input, env)
     }
 }
 
@@ -95,7 +95,7 @@ fn rep(input: String, env: &mut Env) -> Result<String, MalError> {
     Ok(PRINT(&EVAL(&READ(input)?, env)?))
 }
 
-// TODO: try_collectを使う
+// ここでtry_collectを使うためにItertoolsのtry_collectをコメントアウトした
 fn eval_ast(ast: &MalVal, env: &mut Env) -> MalResult {
     match ast {
         MalVal::Symbol(s) => env
@@ -103,19 +103,15 @@ fn eval_ast(ast: &MalVal, env: &mut Env) -> MalResult {
             .ok_or(MalError::NotFound(s.to_string()))
             .map(|v| v.clone()),
         MalVal::List(l, _) => Ok(MalVal::list(
-            l.iter()
-                .map(|item| EVAL(item, env))
-                .collect::<Result<_, _>>()?,
+            l.iter().map(|item| EVAL(item, env)).try_collect()?,
         )),
         MalVal::Vector(l, _) => Ok(MalVal::vec(
-            l.iter()
-                .map(|item| EVAL(item, env))
-                .collect::<Result<_, _>>()?,
+            l.iter().map(|item| EVAL(item, env)).try_collect()?,
         )),
         MalVal::HashMap(m, _) => Ok(MalVal::hashmap(
             m.iter()
                 .map(|(k, v)| Ok((k.clone(), EVAL(v, env)?)))
-                .collect::<Result<_, _>>()?,
+                .try_collect()?,
         )),
         _ => Ok(ast.clone()),
     }
