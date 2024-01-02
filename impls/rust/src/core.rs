@@ -1,3 +1,5 @@
+use std::io::{self, BufWriter, Write};
+
 use crate::env::Env;
 use crate::printer;
 use crate::types::{MalError, MalVal};
@@ -132,22 +134,37 @@ pub fn env() -> Env {
                 ))
             }),
         ),
+        // TODO: prn, printlnは最後だけ改行する
         (
             "prn".to_string(),
             MalVal::BuiltinFn(|args| {
-                args.into_iter()
-                    .for_each(|x| println!("{}", printer::pr_str(&x, true)));
+                fast_print(args.into_iter().map(|x| printer::pr_str(&x, true)));
                 Ok(MalVal::Nil)
             }),
         ),
         (
             "println".to_string(),
             MalVal::BuiltinFn(|args| {
-                args.into_iter()
-                    .for_each(|x| println!("{}", printer::pr_str(&x, false)));
+                fast_print(args.into_iter().map(|x| printer::pr_str(&x, false)));
                 Ok(MalVal::Nil)
             }),
         ),
     ]
     .into()
+}
+
+fn fast_print<I>(mut s: I)
+where
+    I: Iterator<Item = String>,
+{
+    let mut out = BufWriter::new(io::stdout().lock());
+    if let Some(str) = s.next() {
+        out.write(str.as_bytes()).unwrap();
+        s.for_each(|str| {
+            out.write(&[b' ']).unwrap();
+            out.write(str.as_bytes()).unwrap();
+        });
+    }
+    out.write(&[b'\n']).unwrap();
+    out.flush().unwrap();
 }

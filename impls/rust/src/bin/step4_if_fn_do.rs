@@ -58,6 +58,7 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
             }
 
             let MalVal::List(list, _) = eval_ast(input, env)? else {
+                // SAFETY: Listの場合はeval_astで必ずMalVal::Listが返る
                 unsafe { unreachable_unchecked() }
             };
             // TODO: vecやhashmapも関数のように扱えるようにする
