@@ -134,7 +134,6 @@ pub fn env() -> Env {
                 ))
             }),
         ),
-        // TODO: prn, printlnは最後だけ改行する
         (
             "prn".to_string(),
             MalVal::BuiltinFn(|args| {

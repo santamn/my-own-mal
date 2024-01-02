@@ -284,7 +284,6 @@ mod tests {
     use rustymal::int_op;
     use rustymal::{env::Env, types::MalVal};
 
-    // TODO: funcのevalでどのenvがいつ使われるかを見る
     #[test]
     fn test_eval_nested_function() {
         // (def! nested-fn (fn* [a] (fn* [b] (+ a b))))
