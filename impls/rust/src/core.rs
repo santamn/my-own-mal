@@ -90,18 +90,27 @@ pub fn env() -> Env {
         (
             "empty?".to_string(),
             MalVal::BuiltinFn(|args| {
-                Ok(MalVal::Bool(matches!(
-                    args.first(),
-                    Some(MalVal::List(v, _)) | Some(MalVal::Vector(v, _)) if v.is_empty()
-                )))
+                Ok(MalVal::Bool(
+                    matches!(
+                        args.first(),
+                        Some(MalVal::List(v, _) | MalVal::Vector(v, _)) if v.is_empty()
+                    ) || matches!(
+                        args.first(),
+                        Some(MalVal::HashMap(map, _)) if map.is_empty()
+                    ) || matches!(
+                        args.first(),
+                        Some(MalVal::HashSet(set, _)) if set.is_empty()
+                    ),
+                ))
             }),
         ),
         (
             "count".to_string(),
             MalVal::BuiltinFn(|args| match args.first() {
                 None | Some(MalVal::Nil) => Ok(MalVal::Number(0)),
-                Some(MalVal::List(list, _)) => Ok(MalVal::Number(list.len() as i64)),
-                Some(MalVal::Vector(vec, _)) => Ok(MalVal::Number(vec.len() as i64)),
+                Some(MalVal::List(v, _) | MalVal::Vector(v, _)) => {
+                    Ok(MalVal::Number(v.len() as i64))
+                }
                 Some(MalVal::HashMap(map, _)) => Ok(MalVal::Number(map.len() as i64)),
                 Some(MalVal::HashSet(set, _)) => Ok(MalVal::Number(set.len() as i64)),
                 Some(z) => Err(MalError::InvalidType(
