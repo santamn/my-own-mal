@@ -16,7 +16,7 @@ macro_rules! int_op {
                     }
                     (z, $crate::types::MalVal::Number(_)) | (_, z) => {
                         Err($crate::types::MalError::InvalidType(
-                            crate::printer::pr_str(&z, true),
+                            $crate::printer::pr_str(&z, true),
                             "number".to_string(),
                             z.type_str(),
                         ))
@@ -82,7 +82,7 @@ pub fn env() -> Env {
             "list?".to_string(),
             MalVal::BuiltinFn(|args| {
                 Ok(MalVal::Bool(matches!(
-                    args.get(0),
+                    args.first(),
                     Some(MalVal::List(_, _))
                 )))
             }),
@@ -91,14 +91,14 @@ pub fn env() -> Env {
             "empty?".to_string(),
             MalVal::BuiltinFn(|args| {
                 Ok(MalVal::Bool(matches!(
-                    args.get(0),
+                    args.first(),
                     Some(MalVal::List(v, _)) | Some(MalVal::Vector(v, _)) if v.is_empty()
                 )))
             }),
         ),
         (
             "count".to_string(),
-            MalVal::BuiltinFn(|args| match args.get(0) {
+            MalVal::BuiltinFn(|args| match args.first() {
                 None | Some(MalVal::Nil) => Ok(MalVal::Number(0)),
                 Some(MalVal::List(list, _)) => Ok(MalVal::Number(list.len() as i64)),
                 Some(MalVal::Vector(vec, _)) => Ok(MalVal::Number(vec.len() as i64)),
@@ -158,12 +158,11 @@ where
 {
     let mut out = BufWriter::new(io::stdout().lock());
     if let Some(str) = s.next() {
-        out.write(str.as_bytes()).unwrap();
+        out.write_all(str.as_bytes()).unwrap();
         s.for_each(|str| {
-            out.write(&[b' ']).unwrap();
-            out.write(str.as_bytes()).unwrap();
+            out.write_all(&[b' ']).unwrap();
+            out.write_all(str.as_bytes()).unwrap();
         });
     }
-    out.write(&[b'\n']).unwrap();
-    out.flush().unwrap();
+    out.write_all(&[b'\n']).unwrap();
 }
