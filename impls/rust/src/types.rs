@@ -245,7 +245,7 @@ impl Display for MalError {
             }
             MalError::WrongArity(name, expected, got) => write!(
                 f,
-                "wrong number of arguments for {}: expected {}, got {}",
+                "wrong number of args for {}: expected {}, got {}",
                 name, expected, got
             ),
             MalError::InvalidSyntax(s) => write!(f, "invalid syntax: {}", s),

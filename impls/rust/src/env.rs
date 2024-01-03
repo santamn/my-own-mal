@@ -54,8 +54,7 @@ impl Env {
         } else {
             Env(Rc::new(RefCell::new(EnvEntity {
                 outer: outer.cloned(),
-                // argsが少ない場合はnilで埋める
-                table: iter::zip(params, args.chain(iter::repeat(MalVal::Nil))).collect(),
+                table: iter::zip(params, args).collect(),
             })))
         }
     }

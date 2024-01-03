@@ -66,6 +66,24 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
             MalVal::BuiltinFn(f) => f(list[1..].to_vec()),
             MalVal::Func(f, _) => {
                 let (rev_p, v) = f.rev_params.clone();
+                if let Some(_) = v {
+                    if rev_p.len() > list.len() - 1 {
+                        return Err(MalError::WrongArity(
+                            "function".to_string(),
+                            Arity::Variadic(rev_p.len()),
+                            list.len() - 1,
+                        ));
+                    }
+                } else {
+                    if rev_p.len() != list.len() - 1 {
+                        return Err(MalError::WrongArity(
+                            "function".to_string(),
+                            Arity::Fixed(rev_p.len()),
+                            list.len() - 1,
+                        ));
+                    }
+                }
+
                 let mut new_env = Env::with_bind(
                     Some(&f.env),
                     rev_p.into_iter().rev(),
