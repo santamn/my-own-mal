@@ -32,7 +32,7 @@ impl Env {
         })))
     }
 
-    // 関数の仮引数と実引数を受け取り、新たな環境を作成する
+    /// 関数の仮引数と実引数を受け取り、新たな環境を作成する
     pub fn with_bind<I, J>(
         outer: Option<&Env>,
         params: I,                // 仮引数
