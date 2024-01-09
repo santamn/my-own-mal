@@ -1,5 +1,10 @@
 ;; Testing recursive tail-call function
 
+(def! sum-to (fn* (n) (if (= n 0) 0 (+ n (sum-to (- n 1))))))
+
+(sum-to 10)
+;=>55
+
 (def! sum2 (fn* (n acc) (if (= n 0) acc (sum2 (- n 1) (+ n acc)))))
 
 ;; TODO: test let*, and do for TCO
