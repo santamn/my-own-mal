@@ -91,7 +91,7 @@ fn EVAL(input: &MalVal, env: &mut Env) -> MalResult {
                     v,
                     list[1..].iter().cloned(),
                 );
-                EVAL(&f.body, &mut new_env)
+                EVAL(&f.body, &mut new_env) // TODO: この処理をループに戻す処理にする
             }
             not_func => Err(MalError::InvalidType(
                 printer::pr_str(not_func, true),
