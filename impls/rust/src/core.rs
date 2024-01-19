@@ -11,7 +11,9 @@ macro_rules! int_op {
         $crate::types::MalVal::BuiltinFn(|args| {
             args.into_iter()
                 .try_reduce(|acc, x| match (acc, x) {
-                    ($crate::types::MalVal::Number(acc), $crate::types::MalVal::Number(x)) => {
+                    ($crate::types::MalVal::Number(acc), $crate::types::MalVal::Number(x)) =>
+                    {
+                        #[allow(clippy::redundant_closure_call)]
                         $func(acc, x)
                     }
                     (z, $crate::types::MalVal::Number(_)) | (_, z) => {
@@ -37,7 +39,9 @@ macro_rules! int_cmp {
             args.into_iter()
                 .tuple_windows()
                 .try_fold(true, |acc, (a, b)| match (a, b) {
-                    ($crate::types::MalVal::Number(a), $crate::types::MalVal::Number(b)) => {
+                    ($crate::types::MalVal::Number(a), $crate::types::MalVal::Number(b)) =>
+                    {
+                        #[allow(clippy::redundant_closure_call)]
                         Ok(acc && $cmp(a, b))
                     }
                     (z, MalVal::Number(_)) | (_, z) => Err($crate::types::MalError::InvalidType(
