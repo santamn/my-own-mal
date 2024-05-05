@@ -114,10 +114,7 @@ fn rep(input: String, env: &mut Env) -> Result<String, MalError> {
 // ここでtry_collectを使うためにItertoolsのtry_collectをコメントアウトした
 fn eval_ast(ast: &MalVal, env: &mut Env) -> MalResult {
     match ast {
-        MalVal::Symbol(s) => env
-            .get(s.as_ref())
-            .ok_or(MalError::NotFound(s.to_string()))
-            .map(|v| v.clone()),
+        MalVal::Symbol(s) => env.get(s.as_ref()).ok_or(MalError::NotFound(s.to_string())),
         MalVal::List(l, _) => Ok(MalVal::list(
             l.iter().map(|item| EVAL(item, env)).try_collect()?,
         )),

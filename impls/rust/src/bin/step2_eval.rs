@@ -69,7 +69,7 @@ fn eval_ast(ast: MalVal, env: &ReplEnv) -> MalResult {
         MalVal::Symbol(s) => env
             .get(&(*s))
             .ok_or(MalError::NotFound(s.to_string()))
-            .map(|v| v.clone()),
+            .cloned(),
         MalVal::List(l, _) => Ok(MalVal::list(
             l.iter()
                 .map(|item| EVAL(item.clone(), env))
