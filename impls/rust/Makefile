@@ -15,6 +15,9 @@ step3:
 step4:
 	cargo build --release --bin step4_if_fn_do
 
+step5:
+	cargo build --release --bin step5_tco
+
 build:
 	cargo build --release
 
