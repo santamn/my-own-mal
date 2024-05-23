@@ -18,6 +18,9 @@ step4:
 step5:
 	cargo build --release --bin step5_tco
 
+step6:
+	cargo build --release --bin step6_file
+
 build:
 	cargo build --release
 
