@@ -222,6 +222,7 @@ pub enum MalError {
     InvalidType(String, String, String),
     WrongArity(String, Arity, usize),
     InvalidSyntax(String),
+    Other(String),
 }
 
 impl Display for MalError {
@@ -249,6 +250,7 @@ impl Display for MalError {
                 name, expected, got
             ),
             MalError::InvalidSyntax(s) => write!(f, "invalid syntax: {}", s),
+            MalError::Other(s) => write!(f, "{}", s),
         }
     }
 }

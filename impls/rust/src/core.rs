@@ -1,8 +1,10 @@
-use std::io::{self, BufWriter, Write};
+use std::fs::File;
+use std::io::{self, BufWriter, Read, Write};
 
 use crate::env::Env;
 use crate::printer;
-use crate::types::{MalError, MalVal};
+use crate::reader;
+use crate::types::{Arity, MalError, MalVal};
 use itertools::Itertools;
 
 #[macro_export]
@@ -159,6 +161,51 @@ pub fn env() -> Env {
             MalVal::BuiltinFn(|args| {
                 fast_print(args.into_iter().map(|x| printer::pr_str(&x, false)));
                 Ok(MalVal::Nil)
+            }),
+        ),
+        (
+            "read-string".to_string(),
+            MalVal::BuiltinFn(|args| {
+                let s = args.first().ok_or(MalError::WrongArity(
+                    "read-string".to_string(),
+                    Arity::Fixed(1),
+                    0,
+                ))?;
+                if let MalVal::String(s) = s {
+                    Ok(reader::read_str(s.to_string())?)
+                } else {
+                    Err(MalError::InvalidType(
+                        printer::pr_str(s, true),
+                        "string".to_string(),
+                        s.type_str(),
+                    ))
+                }
+            }),
+        ),
+        (
+            "slurp".to_string(),
+            MalVal::BuiltinFn(|args| {
+                let s = args.first().ok_or(MalError::WrongArity(
+                    "slurp".to_string(),
+                    Arity::Fixed(1),
+                    0,
+                ))?;
+                if let MalVal::String(s) = s {
+                    File::open(s.as_ref())
+                        .map_err(|e| MalError::Other(e.to_string()))
+                        .and_then(|mut f| {
+                            let mut s = String::new();
+                            f.read_to_string(&mut s)
+                                .map_err(|e| MalError::Other(e.to_string()))?;
+                            Ok(MalVal::string(s))
+                        })
+                } else {
+                    Err(MalError::InvalidType(
+                        printer::pr_str(s, true),
+                        "string".to_string(),
+                        s.type_str(),
+                    ))
+                }
             }),
         ),
     ]

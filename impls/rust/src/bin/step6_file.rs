@@ -16,6 +16,14 @@ fn main() {
         &mut env,
     )
     .unwrap();
+    // (def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))
+    rep(
+        "(def! load-file (fn* [filename] (eval (read-string (str \"(do \" (slurp filename) \"\nnil)\")))))"
+            .to_string(),
+        &mut env,
+    )
+    .unwrap();
+
     loop {
         let mut editor = DefaultEditor::new().unwrap();
         let line = editor.readline("user=> ");
@@ -58,6 +66,17 @@ fn EVAL(mut input: MalVal, env: &mut Env) -> MalResult {
                     }
                     "let*" => {
                         input = special_let(list, env)?;
+                        continue;
+                    }
+                    "eval" => {
+                        if list.len() != 2 {
+                            return Err(MalError::WrongArity(
+                                "eval".to_string(),
+                                Arity::Fixed(1),
+                                list.len() - 1,
+                            ));
+                        }
+                        input = list[1].clone();
                         continue;
                     }
                     _ => {}
