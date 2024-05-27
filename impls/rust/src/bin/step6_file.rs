@@ -16,9 +16,8 @@ fn main() {
         &mut env,
     )
     .unwrap();
-    // (def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))
     rep(
-        "(def! load-file (fn* [filename] (eval (read-string (str \"(do \" (slurp filename) \"\nnil)\")))))"
+        "(def! load-file (fn* [filename] (eval (read-string (str \"(do \" (slurp filename) \")\")))))"
             .to_string(),
         &mut env,
     )
@@ -57,7 +56,7 @@ fn EVAL(mut input: MalVal, env: &mut Env) -> MalResult {
                     "def!" => return special_def(list, env),
                     "fn*" => return special_fn(list, env),
                     "do" => {
-                        input = special_do(list.to_vec(), env)?;
+                        input = special_do(list, env)?;
                         continue;
                     }
                     "if" => {
@@ -76,7 +75,7 @@ fn EVAL(mut input: MalVal, env: &mut Env) -> MalResult {
                                 list.len() - 1,
                             ));
                         }
-                        input = list[1].clone();
+                        input = EVAL(list[1].clone(), env)?;
                         continue;
                     }
                     _ => {}
@@ -180,10 +179,11 @@ fn special_def(list: &[MalVal], env: &mut Env) -> MalResult {
     }
 }
 
-fn special_do(mut list: Vec<MalVal>, env: &mut Env) -> MalResult {
-    let last = list.pop().unwrap_or(MalVal::Nil);
-    list.into_iter().try_for_each(|x| {
-        EVAL(x, env)?;
+fn special_do(list: &[MalVal], env: &mut Env) -> MalResult {
+    let mut iter = list[1..].iter();
+    let last = iter.next_back().unwrap_or(&MalVal::Nil).clone();
+    iter.try_for_each(|x| {
+        EVAL(x.clone(), env)?;
         Ok(())
     })?;
     Ok(last)
