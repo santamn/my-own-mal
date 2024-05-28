@@ -1,4 +1,5 @@
 use fnv::FnvBuildHasher;
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::hash::{BuildHasher, Hash, Hasher};
@@ -21,6 +22,7 @@ pub enum MalVal<S = FnvBuildHasher> {
     HashSet(Rc<HashSet<MalVal, S>>, Rc<MalVal>),
     BuiltinFn(fn(Vec<MalVal>) -> MalResult),
     Func(Rc<Closure<S>>, Rc<MalVal>),
+    Atom(RefCell<Rc<MalVal>>),
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +101,7 @@ where
             MalVal::HashMap(_, _) => "hash-map".to_string(),
             MalVal::HashSet(_, _) => "hash-set".to_string(),
             MalVal::BuiltinFn(_) | MalVal::Func(_, _) => "function".to_string(),
+            MalVal::Atom(_) => "atom".to_string(),
         }
     }
 }
@@ -119,6 +122,7 @@ impl PartialEq for MalVal {
             (MalVal::HashMap(a, _), MalVal::HashMap(b, _)) => a == b,
             (MalVal::HashSet(a, _), MalVal::HashSet(b, _)) => a == b,
             (MalVal::BuiltinFn(a), MalVal::BuiltinFn(b)) => a == b,
+            (MalVal::Atom(a), MalVal::Atom(b)) => a == b,
             _ => false, // NOTE: Func同士は常にfalse
         }
     }
@@ -170,6 +174,7 @@ impl Hash for MalVal {
                 f.rev_params.hash(state);
                 f.body.hash(state);
             }
+            MalVal::Atom(a) => a.borrow().hash(state),
         }
     }
 }
