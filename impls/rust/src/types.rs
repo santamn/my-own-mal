@@ -174,7 +174,7 @@ impl Hash for MalVal {
                 f.rev_params.hash(state);
                 f.body.hash(state);
             }
-            MalVal::Atom(a) => a.borrow().hash(state),
+            MalVal::Atom(a) => state.write_usize(a as *const _ as usize),
         }
     }
 }

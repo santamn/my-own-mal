@@ -1,3 +1,4 @@
+#![allow(clippy::mutable_key_type)]
 #![feature(iterator_try_reduce)]
 
 pub mod core;
