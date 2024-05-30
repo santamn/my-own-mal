@@ -22,7 +22,7 @@ pub enum MalVal<S = FnvBuildHasher> {
     HashSet(Rc<HashSet<MalVal, S>>, Rc<MalVal>),
     BuiltinFn(fn(Vec<MalVal>) -> MalResult),
     Func(Rc<Closure<S>>, Rc<MalVal>),
-    Atom(RefCell<Rc<MalVal>>),
+    Atom(Rc<RefCell<MalVal>>),
 }
 
 #[derive(Debug, Clone)]
@@ -86,6 +86,10 @@ where
 
     pub fn func(closure: Closure<S>) -> Self {
         MalVal::func_with_meta(closure, MalVal::Nil)
+    }
+
+    pub fn atom(atom: MalVal) -> Self {
+        MalVal::Atom(Rc::new(RefCell::new(atom)))
     }
 
     pub fn type_str(&self) -> String {

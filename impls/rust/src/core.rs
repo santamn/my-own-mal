@@ -86,44 +86,68 @@ pub fn env() -> Env {
         ),
         (
             "list?".to_string(),
-            MalVal::BuiltinFn(|args| {
+            MalVal::BuiltinFn(|mut args| {
+                if args.len() != 1 {
+                    return Err(MalError::WrongArity(
+                        "list?".to_string(),
+                        Arity::Fixed(1),
+                        args.len(),
+                    ));
+                }
                 Ok(MalVal::Bool(matches!(
-                    args.first(),
-                    Some(MalVal::List(_, _))
+                    unsafe { args.pop().unwrap_unchecked() },
+                    MalVal::List(_, _)
                 )))
             }),
         ),
         (
             "empty?".to_string(),
             MalVal::BuiltinFn(|args| {
+                if args.len() != 1 {
+                    return Err(MalError::WrongArity(
+                        "list?".to_string(),
+                        Arity::Fixed(1),
+                        args.len(),
+                    ));
+                }
+                let arg = unsafe { args.first().unwrap_unchecked() };
                 Ok(MalVal::Bool(
                     matches!(
-                        args.first(),
-                        Some(MalVal::List(v, _) | MalVal::Vector(v, _)) if v.is_empty()
+                        arg,
+                        MalVal::List(v, _) | MalVal::Vector(v, _) if v.is_empty()
                     ) || matches!(
-                        args.first(),
-                        Some(MalVal::HashMap(map, _)) if map.is_empty()
+                        arg,
+                        MalVal::HashMap(map, _) if map.is_empty()
                     ) || matches!(
-                        args.first(),
-                        Some(MalVal::HashSet(set, _)) if set.is_empty()
+                        arg,
+                        MalVal::HashSet(set, _) if set.is_empty()
                     ),
                 ))
             }),
         ),
         (
             "count".to_string(),
-            MalVal::BuiltinFn(|args| match args.first() {
-                None | Some(MalVal::Nil) => Ok(MalVal::Number(0)),
-                Some(MalVal::List(v, _) | MalVal::Vector(v, _)) => {
-                    Ok(MalVal::Number(v.len() as i64))
+            MalVal::BuiltinFn(|args| {
+                if args.len() > 1 {
+                    return Err(MalError::WrongArity(
+                        "count".to_string(),
+                        Arity::JustOrOneLess(1),
+                        args.len(),
+                    ));
                 }
-                Some(MalVal::HashMap(map, _)) => Ok(MalVal::Number(map.len() as i64)),
-                Some(MalVal::HashSet(set, _)) => Ok(MalVal::Number(set.len() as i64)),
-                Some(z) => Err(MalError::InvalidType(
-                    printer::pr_str(z, true),
-                    "nil, list, vector, hashmap or hashset".to_string(),
-                    z.type_str(),
-                )),
+                match args.first() {
+                    None | Some(MalVal::Nil) => Ok(MalVal::Number(0)),
+                    Some(MalVal::List(v, _) | MalVal::Vector(v, _)) => {
+                        Ok(MalVal::Number(v.len() as i64))
+                    }
+                    Some(MalVal::HashMap(map, _)) => Ok(MalVal::Number(map.len() as i64)),
+                    Some(MalVal::HashSet(set, _)) => Ok(MalVal::Number(set.len() as i64)),
+                    Some(z) => Err(MalError::InvalidType(
+                        printer::pr_str(z, true),
+                        "nil, list, vector, hashmap or hashset".to_string(),
+                        z.type_str(),
+                    )),
+                }
             }),
         ),
         (
@@ -165,17 +189,20 @@ pub fn env() -> Env {
         ),
         (
             "read-string".to_string(),
-            MalVal::BuiltinFn(|args| {
-                let s = args.first().ok_or(MalError::WrongArity(
-                    "read-string".to_string(),
-                    Arity::Fixed(1),
-                    0,
-                ))?;
+            MalVal::BuiltinFn(|mut args| {
+                if args.len() != 1 {
+                    return Err(MalError::WrongArity(
+                        "read-string".to_string(),
+                        Arity::Fixed(1),
+                        args.len(),
+                    ));
+                }
+                let s = unsafe { args.pop().unwrap_unchecked() };
                 if let MalVal::String(s) = s {
                     Ok(reader::read_str(s.to_string())?)
                 } else {
                     Err(MalError::InvalidType(
-                        printer::pr_str(s, true),
+                        printer::pr_str(&s, true),
                         "string".to_string(),
                         s.type_str(),
                     ))
@@ -184,12 +211,15 @@ pub fn env() -> Env {
         ),
         (
             "slurp".to_string(),
-            MalVal::BuiltinFn(|args| {
-                let s = args.first().ok_or(MalError::WrongArity(
-                    "slurp".to_string(),
-                    Arity::Fixed(1),
-                    0,
-                ))?;
+            MalVal::BuiltinFn(|mut args| {
+                if args.len() != 1 {
+                    return Err(MalError::WrongArity(
+                        "slurp".to_string(),
+                        Arity::Fixed(1),
+                        args.len(),
+                    ));
+                }
+                let s = unsafe { args.pop().unwrap_unchecked() };
                 if let MalVal::String(s) = s {
                     File::open(s.as_ref())
                         .map_err(|e| MalError::Other(e.to_string()))
@@ -201,10 +231,113 @@ pub fn env() -> Env {
                         })
                 } else {
                     Err(MalError::InvalidType(
-                        printer::pr_str(s, true),
+                        printer::pr_str(&s, true),
                         "string".to_string(),
                         s.type_str(),
                     ))
+                }
+            }),
+        ),
+        (
+            "atom".to_string(),
+            MalVal::BuiltinFn(|mut args| {
+                if args.len() != 1 {
+                    return Err(MalError::WrongArity(
+                        "atom".to_string(),
+                        Arity::Fixed(1),
+                        args.len(),
+                    ));
+                }
+                Ok(MalVal::atom(unsafe { args.pop().unwrap_unchecked() }))
+            }),
+        ),
+        (
+            "atom?".to_string(),
+            MalVal::BuiltinFn(|args| {
+                if args.len() != 1 {
+                    return Err(MalError::WrongArity(
+                        "atom?".to_string(),
+                        Arity::Fixed(1),
+                        args.len(),
+                    ));
+                }
+                Ok(MalVal::Bool(matches!(
+                    unsafe { args.first().unwrap_unchecked() },
+                    MalVal::Atom(_)
+                )))
+            }),
+        ),
+        (
+            "deref".to_string(),
+            MalVal::BuiltinFn(|mut args| {
+                if args.len() != 1 {
+                    return Err(MalError::WrongArity(
+                        "deref".to_string(),
+                        Arity::Fixed(1),
+                        args.len(),
+                    ));
+                }
+                match unsafe { args.pop().unwrap_unchecked() } {
+                    MalVal::Atom(a) => Ok(a.borrow().clone()),
+                    z => Err(MalError::InvalidType(
+                        printer::pr_str(&z, true),
+                        "atom".to_string(),
+                        z.type_str(),
+                    )),
+                }
+            }),
+        ),
+        (
+            "reset!".to_string(),
+            MalVal::BuiltinFn(|mut args| {
+                if args.len() != 2 {
+                    return Err(MalError::WrongArity(
+                        "reset!".to_string(),
+                        Arity::Fixed(2),
+                        args.len(),
+                    ));
+                }
+                match unsafe { (args.pop().unwrap_unchecked(), args.pop().unwrap_unchecked()) } {
+                    (MalVal::Atom(a), v) => {
+                        *a.borrow_mut() = v.clone();
+                        Ok(v)
+                    }
+                    (z, _) => Err(MalError::InvalidType(
+                        printer::pr_str(&z, true),
+                        "atom".to_string(),
+                        z.type_str(),
+                    )),
+                }
+            }),
+        ),
+        (
+            "swap!".to_string(),
+            MalVal::BuiltinFn(|mut args| {
+                if args.len() < 2 {
+                    return Err(MalError::WrongArity(
+                        "swap!".to_string(),
+                        Arity::Variadic(2),
+                        args.len(),
+                    ));
+                }
+                match unsafe { (args.pop().unwrap_unchecked(), args.pop().unwrap_unchecked()) } {
+                    (MalVal::Atom(a), MalVal::Func(f, _)) => {
+                        let mut v = a.borrow_mut();
+                        let mut args = vec![v.clone()];
+                        args.extend(args);
+                        f.apply(args)
+                    }
+                    (MalVal::Atom(a), MalVal::BuiltinFn(f)) => {
+                        let mut v = a.borrow_mut();
+                        let mut args = vec![v.clone()];
+                        args.extend(args);
+                        f(args)
+                    }
+                    (z, _) => Err(MalError::InvalidType(
+                        printer::pr_str(&z, true),
+                        "atom".to_string(),
+                        z.type_str(),
+                    )),
                 }
             }),
         ),
