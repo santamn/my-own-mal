@@ -4,7 +4,7 @@ use std::io::{self, BufWriter, Read, Write};
 use crate::env::Env;
 use crate::printer;
 use crate::reader;
-use crate::types::{Arity, MalError, MalVal};
+use crate::types::{Arity, Closure, MalError, MalVal};
 use itertools::Itertools;
 
 #[macro_export]
@@ -311,31 +311,27 @@ pub fn env() -> Env {
             }),
         ),
         (
-            "swap!".to_string(),
+            "cons".to_string(),
             MalVal::BuiltinFn(|mut args| {
-                if args.len() < 2 {
+                if args.len() != 2 {
                     return Err(MalError::WrongArity(
-                        "swap!".to_string(),
-                        Arity::Variadic(2),
+                        "cons".to_string(),
+                        Arity::Fixed(2),
                         args.len(),
                     ));
                 }
-                match unsafe { (args.pop().unwrap_unchecked(), args.pop().unwrap_unchecked()) } {
-                    (MalVal::Atom(a), MalVal::Func(f, _)) => {
-                        let mut v = a.borrow_mut();
-                        let mut args = vec![v.clone()];
-                        args.extend(args);
-                        f.apply(args)
+                let (x, y) =
+                    unsafe { (args.pop().unwrap_unchecked(), args.pop().unwrap_unchecked()) };
+                match y {
+                    MalVal::List(v, meta) | MalVal::Vector(v, meta) => {
+                        let mut list = Vec::with_capacity(v.len() + 1);
+                        list.push(x);
+                        list.extend_from_slice(&v);
+                        Ok(MalVal::list_with_meta(list, meta.as_ref().clone()))
                     }
-                    (MalVal::Atom(a), MalVal::BuiltinFn(f)) => {
-                        let mut v = a.borrow_mut();
-                        let mut args = vec![v.clone()];
-                        args.extend(args);
-                        f(args)
-                    }
-                    (z, _) => Err(MalError::InvalidType(
+                    z => Err(MalError::InvalidType(
                         printer::pr_str(&z, true),
-                        "atom".to_string(),
+                        "list or vector".to_string(),
                         z.type_str(),
                     )),
                 }
@@ -359,3 +355,5 @@ where
     }
     out.write_all(&[b'\n']).unwrap();
 }
+
+fn reset() {}

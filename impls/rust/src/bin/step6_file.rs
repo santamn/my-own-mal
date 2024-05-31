@@ -22,6 +22,16 @@ fn main() {
         &mut env,
     )
     .unwrap();
+    rep(
+        "(def! apply (fn* [f args] (eval (cons f args))))".to_string(),
+        &mut env,
+    )
+    .unwrap();
+    rep(
+        "(def! swap! (fn* [a f & args] (apply reset! a (f (deref a) args))))".to_string(),
+        &mut env,
+    )
+    .unwrap();
 
     loop {
         let mut editor = DefaultEditor::new().unwrap();

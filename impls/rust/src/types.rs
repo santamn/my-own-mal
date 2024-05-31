@@ -264,6 +264,10 @@ impl Display for MalError {
     }
 }
 
+trait Excutable {
+    fn execute(&self, args: Vec<MalVal>) -> MalResult;
+}
+
 #[cfg(test)]
 mod tests {
     use std::hash::{Hash, Hasher};
