@@ -79,6 +79,15 @@ impl Env {
     {
         self.0.borrow_mut().table.insert(key.into(), val);
     }
+
+    pub fn global(&self) -> Self {
+        // 最も外側の環境を返す
+        if let Some(outer) = &self.0.borrow_mut().outer {
+            outer.global()
+        } else {
+            self.clone()
+        }
+    }
 }
 
 impl<const N: usize> From<[(String, MalVal); N]> for Env {

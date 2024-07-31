@@ -4,7 +4,7 @@ use std::io::{self, BufWriter, Read, Write};
 use crate::env::Env;
 use crate::printer;
 use crate::reader;
-use crate::types::{Arity, Closure, MalError, MalVal};
+use crate::types::{Arity, MalError, MalVal};
 use itertools::Itertools;
 
 #[macro_export]
@@ -56,6 +56,10 @@ macro_rules! int_cmp {
         })
     };
 }
+
+// TODO: argsに欲しい機能
+//  - イテレータを返す
+//  - スライスにする
 
 // 一回しか呼ばれないのでinlineにしておく
 #[inline]
@@ -114,7 +118,10 @@ pub fn env() -> Env {
                 Ok(MalVal::Bool(
                     matches!(
                         arg,
-                        MalVal::List(v, _) | MalVal::Vector(v, _) if v.is_empty()
+                        MalVal::List(l, _) if l.is_empty()
+                    ) || matches!(
+                        arg,
+                        MalVal::Vector(v, _) if v.is_empty()
                     ) || matches!(
                         arg,
                         MalVal::HashMap(map, _) if map.is_empty()
@@ -137,9 +144,8 @@ pub fn env() -> Env {
                 }
                 match args.first() {
                     None | Some(MalVal::Nil) => Ok(MalVal::Number(0)),
-                    Some(MalVal::List(v, _) | MalVal::Vector(v, _)) => {
-                        Ok(MalVal::Number(v.len() as i64))
-                    }
+                    Some(MalVal::List(l, _)) => Ok(MalVal::Number(l.len() as i64)),
+                    Some(MalVal::Vector(v, _)) => Ok(MalVal::Number(v.len() as i64)),
                     Some(MalVal::HashMap(map, _)) => Ok(MalVal::Number(map.len() as i64)),
                     Some(MalVal::HashSet(set, _)) => Ok(MalVal::Number(set.len() as i64)),
                     Some(z) => Err(MalError::InvalidType(
@@ -289,51 +295,43 @@ pub fn env() -> Env {
         ),
         (
             "reset!".to_string(),
-            MalVal::BuiltinFn(|mut args| {
-                if args.len() != 2 {
-                    return Err(MalError::WrongArity(
-                        "reset!".to_string(),
-                        Arity::Fixed(2),
-                        args.len(),
-                    ));
+            MalVal::BuiltinFn(|mut args| match &mut args[..] {
+                [MalVal::Atom(a), v] => {
+                    a.replace(v.clone());
+                    Ok(v.clone())
                 }
-                match unsafe { (args.pop().unwrap_unchecked(), args.pop().unwrap_unchecked()) } {
-                    (MalVal::Atom(a), v) => {
-                        *a.borrow_mut() = v.clone();
-                        Ok(v)
-                    }
-                    (z, _) => Err(MalError::InvalidType(
-                        printer::pr_str(&z, true),
-                        "atom".to_string(),
-                        z.type_str(),
-                    )),
-                }
+                [z, _] => Err(MalError::InvalidType(
+                    printer::pr_str(z, true),
+                    "atom".to_string(),
+                    z.type_str(),
+                )),
+                _ => Err(MalError::WrongArity(
+                    "reset!".to_string(),
+                    Arity::Fixed(2),
+                    args.len(),
+                )),
             }),
         ),
         (
-            "cons".to_string(),
+            "list*".to_string(),
             MalVal::BuiltinFn(|mut args| {
-                if args.len() != 2 {
+                if args.is_empty() {
                     return Err(MalError::WrongArity(
-                        "cons".to_string(),
-                        Arity::Fixed(2),
+                        "apply".to_string(),
+                        Arity::Variadic(1),
                         args.len(),
                     ));
                 }
-                let (x, y) =
-                    unsafe { (args.pop().unwrap_unchecked(), args.pop().unwrap_unchecked()) };
-                match y {
-                    MalVal::List(v, meta) | MalVal::Vector(v, meta) => {
-                        let mut list = Vec::with_capacity(v.len() + 1);
-                        list.push(x);
-                        list.extend_from_slice(&v);
-                        Ok(MalVal::list_with_meta(list, meta.as_ref().clone()))
-                    }
-                    z => Err(MalError::InvalidType(
-                        printer::pr_str(&z, true),
+
+                let last = unsafe { args.pop().unwrap_unchecked() };
+                if let MalVal::List(v, _) | MalVal::Vector(v, _) = last {
+                    Ok(MalVal::list(args.into_iter().chain((*v).clone()).collect()))
+                } else {
+                    Err(MalError::InvalidType(
+                        printer::pr_str(&last, true),
                         "list or vector".to_string(),
-                        z.type_str(),
-                    )),
+                        last.type_str(),
+                    ))
                 }
             }),
         ),
@@ -349,11 +347,9 @@ where
     if let Some(str) = s.next() {
         out.write_all(str.as_bytes()).unwrap();
         s.for_each(|str| {
-            out.write_all(&[b' ']).unwrap();
+            out.write_all(b" ").unwrap();
             out.write_all(str.as_bytes()).unwrap();
         });
     }
-    out.write_all(&[b'\n']).unwrap();
+    out.write_all(b"\n").unwrap();
 }
-
-fn reset() {}

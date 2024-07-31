@@ -17,21 +17,27 @@ fn main() {
     )
     .unwrap();
     rep(
-        "(def! load-file (fn* [filename] (eval (read-string (str \"(do \" (slurp filename) \")\")))))"
+        "(def! load-file (fn* [filename] (eval (read-string (str \"(do \" (slurp filename) \"\nnil)\")))))"
             .to_string(),
         &mut env,
     )
     .unwrap();
     rep(
-        "(def! apply (fn* [f args] (eval (cons f args))))".to_string(),
+        "(def! apply (fn* [f x args] (eval (list* f x args))))".to_string(),
         &mut env,
     )
     .unwrap();
     rep(
-        "(def! swap! (fn* [a f & args] (apply reset! a (f (deref a) args))))".to_string(),
+        "(def! swap! (fn* [a f & args] (reset! a (apply f (deref a) args))))".to_string(),
         &mut env,
     )
     .unwrap();
+
+    // コマンドライン引数の先頭以外の要素を*ARGV*に束縛
+    env.set(
+        "*ARGV*".to_string(),
+        MalVal::list(std::env::args().skip(1).map(MalVal::string).collect()),
+    );
 
     loop {
         let mut editor = DefaultEditor::new().unwrap();
@@ -121,7 +127,7 @@ fn EVAL(mut input: MalVal, env: &mut Env) -> MalResult {
                         Some(&f.env),
                         rev_p.into_iter().rev(),
                         v,
-                        list[1..].iter().cloned(),
+                        list.iter().skip(1).cloned(),
                     );
                     input = f.body.clone();
                 }
@@ -167,6 +173,8 @@ fn eval_ast(ast: MalVal, env: &mut Env) -> MalResult {
     }
 }
 
+// TODO: sliceをmatchする処理に変える
+
 fn special_def(list: &[MalVal], env: &mut Env) -> MalResult {
     if list.len() != 3 {
         return Err(MalError::WrongArity(
@@ -190,7 +198,7 @@ fn special_def(list: &[MalVal], env: &mut Env) -> MalResult {
 }
 
 fn special_do(list: &[MalVal], env: &mut Env) -> MalResult {
-    let mut iter = list[1..].iter();
+    let mut iter = list.iter().skip(1);
     let last = iter.next_back().unwrap_or(&MalVal::Nil).clone();
     iter.try_for_each(|x| {
         EVAL(x.clone(), env)?;

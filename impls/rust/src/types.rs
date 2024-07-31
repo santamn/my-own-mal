@@ -119,10 +119,8 @@ impl PartialEq for MalVal {
             (MalVal::String(a), MalVal::String(b)) => a == b,
             (MalVal::Keyword(a), MalVal::Keyword(b)) => a == b,
             (MalVal::Symbol(a), MalVal::Symbol(b)) => a == b,
-            (
-                MalVal::List(a, _) | MalVal::Vector(a, _),
-                MalVal::List(b, _) | MalVal::Vector(b, _),
-            ) => a == b,
+            (MalVal::List(a, _), MalVal::List(b, _)) => a == b,
+            (MalVal::Vector(a, _), MalVal::Vector(b, _)) => a == b,
             (MalVal::HashMap(a, _), MalVal::HashMap(b, _)) => a == b,
             (MalVal::HashSet(a, _), MalVal::HashSet(b, _)) => a == b,
             (MalVal::BuiltinFn(a), MalVal::BuiltinFn(b)) => a == b,
@@ -152,7 +150,8 @@ impl Hash for MalVal {
                 state.write_u8(3);
                 s.hash(state)
             }
-            MalVal::List(v, _) | MalVal::Vector(v, _) => v.hash(state),
+            MalVal::List(l, _) => l.hash(state),
+            MalVal::Vector(v, _) => v.hash(state),
             // ref: [集合をハッシュする (Zobrist hashing)](https://trap.jp/post/1594/)
             MalVal::HashMap(m, _) => {
                 state.write_usize(m.len());
@@ -262,10 +261,6 @@ impl Display for MalError {
             MalError::Other(s) => write!(f, "{}", s),
         }
     }
-}
-
-trait Excutable {
-    fn execute(&self, args: Vec<MalVal>) -> MalResult;
 }
 
 #[cfg(test)]

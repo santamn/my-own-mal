@@ -38,7 +38,7 @@ pub fn pr_str(form: &MalVal, print_readably: bool) -> String {
             s.iter().map(|s| pr_str(s, print_readably)).join(" ")
         ),
         MalVal::BuiltinFn(_) | MalVal::Func(_, _) => String::from("#<function>"),
-        MalVal::Atom(a) => format!("ref {}", pr_str(&a.borrow(), print_readably)),
+        MalVal::Atom(a) => format!("(atom {})", pr_str(&a.borrow(), print_readably)),
     }
 }
 
