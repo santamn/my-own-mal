@@ -19,8 +19,8 @@
   priority: required
   tests:
     - target: (abc 1 2 3)
-      expected: .+
-      error: true
+      expected: ""
+      error: .+
 - description: Testing empty list
   priority: required
   tests:
